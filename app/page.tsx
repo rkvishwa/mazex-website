@@ -7,6 +7,7 @@ import Organizers from "@/components/Organizers";
 import Sponsorship from "@/components/Sponsorship";
 import PastEvents from "@/components/PastEvents";
 import RegisterCTA from "@/components/RegisterCTA";
+import ContactUs from "@/components/ContactUs";
 import Footer from "@/components/Footer";
 
 export default function Home() {
@@ -21,6 +22,7 @@ export default function Home() {
       <Sponsorship />
       <PastEvents />
       <RegisterCTA />
+      <ContactUs />
       <Footer />
     </main>
   );

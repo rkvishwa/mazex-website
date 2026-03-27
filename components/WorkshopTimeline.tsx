@@ -62,8 +62,13 @@ const WorkshopCardContent = ({ event }: { event: (typeof WORKSHOP_EVENTS)[0] }) 
       </span>
     </div>
 
-    <h3 className="text-[#F8FAFC] font-bold text-[16px] sm:text-[18px] mb-2 leading-snug font-[family-name:var(--font-space-grotesk)] group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-[#F8FAFC] group-hover:to-[#A855F7] transition-all duration-300">
-      Workshop {event.number} — {event.title}
+    <h3 className="font-bold mb-2 leading-snug font-[family-name:var(--font-space-grotesk)] transition-all duration-300">
+      <span className="block text-[#C084FC] text-[12px] sm:text-[13px] uppercase tracking-wider mb-1">
+        Workshop {event.number}
+      </span>
+      <span className="block text-[#F8FAFC] text-[16px] sm:text-[18px] group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-[#F8FAFC] group-hover:to-[#A855F7] transition-all duration-300">
+        {event.title}
+      </span>
     </h3>
 
     <p className="text-[#94A3B8] text-[12px] sm:text-[13px] leading-relaxed">

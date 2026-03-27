@@ -2,7 +2,7 @@ import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import AboutMazeX from "@/components/AboutMazeX";
 import WhatIsMicromouse from "@/components/WhatIsMicromouse";
-import Timeline from "@/components/Timeline";
+import WorkshopTimeline from "@/components/WorkshopTimeline";
 import Delegates from "@/components/Delegates";
 import Organizers from "@/components/Organizers";
 import Sponsorship from "@/components/Sponsorship";
@@ -18,7 +18,7 @@ export default function Home() {
       <Hero />
       <AboutMazeX />
       <WhatIsMicromouse />
-      <Timeline />
+      <WorkshopTimeline />
       <Delegates />
       <Organizers />
       <Sponsorship />

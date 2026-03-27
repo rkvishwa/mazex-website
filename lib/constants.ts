@@ -43,6 +43,37 @@ export const TIMELINE_EVENTS = [
     },
 ];
 
+export const WORKSHOP_EVENTS = [
+    {
+        number: "01",
+        date: "11th April, 2026",
+        title: "Foundations, Components & Build Start",
+        description:
+            "Introduction to Micromouse rules, robot anatomy, and electronics basics. Teams begin their physical build.",
+    },
+    {
+        number: "02",
+        date: "18th April, 2026",
+        title: "Microcontrollers, Sensors & Basic Movement",
+        description:
+            "Microcontroller setup, IR sensor interfacing, and encoder integration. Robot performs its first movements.",
+    },
+    {
+        number: "03",
+        date: "25th April, 2026",
+        title: "PID Control & Wall Following",
+        description:
+            "PID theory, tuning, and implementation for stable wall-following behaviour.",
+    },
+    {
+        number: "04",
+        date: "2nd May, 2026",
+        title: "Maze-Solving Algorithms & Full Integration",
+        description:
+            "Flood Fill algorithm and full system integration into a competition-ready robot.",
+    },
+];
+
 export const ORGANIZERS = [
     {
         title: "IEEE Robotics & Automation Society",

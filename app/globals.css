@@ -110,3 +110,20 @@ h1, h2, h3, h4, h5, h6 {
   background: linear-gradient(90deg, transparent, #2C7DA0, transparent);
   width: 100%;
 }
+
+/* Workshop timeline pin pulse */
+@keyframes pin-pulse {
+  0%, 100% {
+    r: 22;
+    opacity: 0.25;
+  }
+  50% {
+    r: 30;
+    opacity: 0.45;
+  }
+}
+
+.animate-pin-pulse {
+  animation: pin-pulse 2.5s ease-in-out infinite;
+}
+

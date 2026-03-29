@@ -10,22 +10,31 @@ import PastEvents from "@/components/PastEvents";
 import RegisterCTA from "@/components/RegisterCTA";
 import ContactUs from "@/components/ContactUs";
 import Footer from "@/components/Footer";
+import HexBackground from "@/components/HexBackground";
 
 export default function Home() {
   return (
-    <main className="site-shell">
+    <>
       <Navbar />
-      <Hero />
-      <AboutMazeX />
-      <WhatIsMicromouse />
-      <WorkshopTimeline />
-      <Delegates />
-      <Organizers />
-      <Sponsorship />
-      <PastEvents />
-      <RegisterCTA />
-      <ContactUs />
-      <Footer />
-    </main>
+      <main className="site-shell">
+        <div aria-hidden="true" className="site-background">
+          <div className="site-background-glow site-background-glow-primary" />
+          <div className="site-background-glow site-background-glow-secondary" />
+          <div className="site-background-glow site-background-glow-tertiary" />
+          <HexBackground opacity={0.2} />
+        </div>
+        <Hero />
+        <AboutMazeX />
+        <WhatIsMicromouse />
+        <WorkshopTimeline />
+        <Delegates />
+        <Organizers />
+        <Sponsorship />
+        <PastEvents />
+        <RegisterCTA />
+        <ContactUs />
+        <Footer />
+      </main>
+    </>
   );
 }

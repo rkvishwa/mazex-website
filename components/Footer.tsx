@@ -41,7 +41,7 @@ const SOCIAL_LINKS = [
 
 export default function Footer() {
   return (
-    <footer className="theme-section relative overflow-hidden border-t border-[#2f2540] bg-[linear-gradient(180deg,rgba(13,10,20,0.98)_0%,rgba(18,13,28,0.98)_58%,rgba(11,8,18,1)_100%)] pb-0 shadow-[0_-18px_48px_rgba(5,2,8,0.24)]">
+    <footer className="theme-section relative overflow-hidden border-t border-[#2f2540] pb-0 shadow-[0_-18px_48px_rgba(5,2,8,0.24)]">
       <div className="pointer-events-none absolute top-0 left-[16%] h-80 w-80 rounded-full bg-[#6b528f]/10 blur-[120px]" />
       <div className="pointer-events-none absolute right-[12%] bottom-0 h-72 w-72 rounded-full bg-[#5a4b73]/8 blur-[110px]" />
 

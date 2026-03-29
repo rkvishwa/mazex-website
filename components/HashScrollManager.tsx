@@ -6,6 +6,18 @@ const EXTRA_GAP = 16;
 const RESIZE_DEBOUNCE_MS = 160;
 const DEFAULT_NAVBAR_OFFSET = 96;
 
+function isReloadNavigation() {
+  const navigationEntry = performance.getEntriesByType(
+    "navigation",
+  )[0] as PerformanceNavigationTiming | undefined;
+
+  if (navigationEntry) {
+    return navigationEntry.type === "reload";
+  }
+
+  return performance.navigation.type === 1;
+}
+
 function getNavbarOffset() {
   const navbarShell = document.querySelector<HTMLElement>("[data-navbar-shell]");
 
@@ -71,6 +83,9 @@ function scrollToHashTarget(hash: string, behavior: ScrollBehavior) {
 export default function HashScrollManager() {
   useEffect(() => {
     let resizeTimeout: number | undefined;
+    const previousScrollRestoration = window.history.scrollRestoration;
+
+    window.history.scrollRestoration = "manual";
 
     const scheduleScroll = (hash: string, behavior: ScrollBehavior) => {
       window.setTimeout(() => {
@@ -154,7 +169,12 @@ export default function HashScrollManager() {
     window.addEventListener("resize", handleResize);
     syncAnchorOffset();
 
-    if (window.location.hash) {
+    if (isReloadNavigation()) {
+      const cleanUrl = `${window.location.pathname}${window.location.search}`;
+
+      window.history.replaceState(null, "", cleanUrl);
+      window.scrollTo({ top: 0, behavior: "auto" });
+    } else if (window.location.hash) {
       scheduleScroll(window.location.hash, "auto");
     }
 
@@ -167,6 +187,8 @@ export default function HashScrollManager() {
       if (resizeTimeout) {
         window.clearTimeout(resizeTimeout);
       }
+
+      window.history.scrollRestoration = previousScrollRestoration;
     };
   }, []);
 

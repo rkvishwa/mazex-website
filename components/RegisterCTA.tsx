@@ -25,16 +25,9 @@ export default function RegisterCTA() {
           transition={{ duration: 0.6 }}
           className="theme-card px-6 py-10 sm:px-10 sm:py-12"
         >
-          <span className="theme-kicker mb-5">Registration Console</span>
-
           <h2 className="mb-4 text-4xl font-bold text-[#F8FAFC] sm:text-5xl lg:text-6xl">
             Ready to Build Your Micromouse?
           </h2>
-
-          <p className="mx-auto max-w-2xl text-lg text-[#9e8db3]">
-            Registration opens April 4th, 2026. Don&apos;t miss your chance to
-            compete.
-          </p>
 
           <motion.div
             initial={{ opacity: 0, y: 30 }}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { REGISTRATION_OPEN_DATE, COMPETITION_DATE } from "@/lib/constants";
 
 interface TimeLeft {
@@ -32,7 +33,7 @@ interface CountdownProps {
 }
 
 export default function Countdown({
-  initialMode = "registration",
+  initialMode = "competition",
   showModeSwitch = true,
   registrationMode = "countdown",
 }: CountdownProps) {
@@ -63,19 +64,6 @@ export default function Countdown({
             <div className="flex gap-1">
               <button
                 onClick={() => {
-                  setShowCompetition(false);
-                  setNow(Date.now());
-                }}
-                className={`rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 cursor-pointer ${
-                  !showCompetition
-                    ? "theme-button text-[#F8FAFC]"
-                    : "text-[#c9bedb] hover:text-[#F8FAFC]"
-                }`}
-              >
-                Registration Opens
-              </button>
-              <button
-                onClick={() => {
                   setShowCompetition(true);
                   setNow(Date.now());
                 }}
@@ -86,6 +74,19 @@ export default function Countdown({
                 }`}
               >
                 Competition Day
+              </button>
+              <button
+                onClick={() => {
+                  setShowCompetition(false);
+                  setNow(Date.now());
+                }}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 cursor-pointer ${
+                  !showCompetition
+                    ? "theme-button text-[#F8FAFC]"
+                    : "text-[#c9bedb] hover:text-[#F8FAFC]"
+                }`}
+              >
+                Registration Opens
               </button>
             </div>
           </div>
@@ -98,30 +99,37 @@ export default function Countdown({
         </div>
       )}
 
-      {showCompetition || registrationMode === "countdown" ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-6">
-          {units.map((unit, i) => (
-            <div key={i} className="theme-card-soft p-4 text-center sm:p-6">
-              <div className="mb-3 h-1 w-14 rounded-full bg-gradient-to-r from-[#A855F7] to-[#818CF8] mx-auto" />
-              <div
-                className="font-[family-name:var(--font-space-grotesk)] text-3xl font-bold tabular-nums text-[#F8FAFC] sm:text-5xl"
-                suppressHydrationWarning
-              >
-                {String(unit.value).padStart(2, "0")}
+      <div className="min-h-[260px] sm:min-h-[220px] flex flex-col justify-center">
+        {showCompetition || registrationMode === "countdown" ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-6">
+            {units.map((unit, i) => (
+              <div key={i} className="theme-card-soft p-4 text-center sm:p-6">
+                <div className="mb-3 h-1 w-14 rounded-full bg-gradient-to-r from-[#A855F7] to-[#818CF8] mx-auto" />
+                <div
+                  className="font-[family-name:var(--font-space-grotesk)] text-3xl font-bold tabular-nums text-[#F8FAFC] sm:text-5xl"
+                  suppressHydrationWarning
+                >
+                  {String(unit.value).padStart(2, "0")}
+                </div>
+                <div className="mt-2 text-xs uppercase tracking-[0.24em] text-[#c9bedb] sm:text-sm">
+                  {unit.label}
+                </div>
               </div>
-              <div className="mt-2 text-xs uppercase tracking-[0.24em] text-[#c9bedb] sm:text-sm">
-                {unit.label}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="py-6 text-center">
-          <div className="text-base font-semibold uppercase tracking-[0.24em] text-[#c9bedb] sm:text-lg">
-            Coming Soon
+            ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="py-12 text-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              className="font-[family-name:var(--font-space-grotesk)] text-xl font-bold uppercase tracking-[0.2em] text-[#c9bedb] sm:text-3xl md:text-4xl"
+            >
+              Coming Soon
+            </motion.div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

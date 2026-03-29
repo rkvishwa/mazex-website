@@ -9,16 +9,6 @@ export default function Delegates() {
       <div className="absolute bottom-[8%] left-[-8%] h-[360px] w-[360px] rounded-full bg-[#818CF8]/10 opacity-40 blur-[130px] pointer-events-none" />
 
       <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="mb-4 flex justify-center"
-        >
-          <span className="theme-kicker">For Delegates</span>
-        </motion.div>
-
         <motion.h2
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -48,10 +38,6 @@ export default function Delegates() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="theme-card p-8 sm:p-12"
         >
-          <div className="absolute right-8 top-8 hidden h-10 w-28 rounded-full border border-[#A855F7]/20 bg-[#0A1224]/80 sm:block">
-            <div className="absolute left-3 right-3 top-1/2 h-[2px] -translate-y-1/2 border-t-2 border-dashed border-[#A855F7]/35" />
-          </div>
-
           <div className="relative z-10 flex flex-col items-center gap-8 md:flex-row">
             <div className="flex-shrink-0">
               <div className="flex h-28 w-24 flex-col items-center justify-center rounded-[1.5rem] border border-[#2D374F] bg-[#111A31]/90 shadow-[0_0_30px_rgba(168,85,247,0.12)] sm:h-32 sm:w-28">
@@ -65,9 +51,6 @@ export default function Delegates() {
             </div>
 
             <div className="flex-1 text-center md:text-left">
-              <div className="theme-chip mb-4 text-[11px] font-bold uppercase tracking-[0.28em]">
-                Download Pack
-              </div>
               <h3 className="mb-3 text-xl font-bold text-[#F8FAFC] sm:text-2xl">
                 Download the Official Delegate Booklet
               </h3>
@@ -82,9 +65,9 @@ export default function Delegates() {
             <div className="flex-shrink-0">
               <a
                 href="/resources/delegate-booklet"
-                className="theme-button inline-flex items-center gap-3 rounded-full px-8 py-4 text-base font-bold"
+                className="inline-flex items-center gap-3 rounded-full bg-white px-8 py-4 text-base font-bold text-[#3B0764] shadow-[0_12px_32px_rgba(255,255,255,0.18)] transition-all duration-300 hover:scale-[1.03] hover:bg-[#F8F6FF] hover:shadow-[0_18px_48px_rgba(255,255,255,0.25)] active:scale-[0.98]"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.4}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                 </svg>
                 Download Booklet

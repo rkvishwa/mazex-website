@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { useMemo } from "react";
 
 const TEAM_MEMBERS = [
   {
@@ -42,122 +43,197 @@ const TEAM_MEMBERS = [
 ];
 
 const containerVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.12 } },
-};
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 40, scale: 0.95 },
+  hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { duration: 0.5, ease: "easeOut" as const },
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2,
+    },
   },
 };
 
-export default function ContactUs() {
-  const topRow = TEAM_MEMBERS.slice(0, 3);
-  const bottomRow = TEAM_MEMBERS.slice(3);
+const hexVariants = {
+  hidden: { opacity: 0, scale: 0.8 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: { type: "spring", stiffness: 100, damping: 15 },
+  },
+};
 
-  const renderCard = (member: (typeof TEAM_MEMBERS)[number]) => (
-    <motion.div
-      key={member.email}
-      variants={cardVariants}
-      className="group relative w-full"
+const Hexagon = ({
+  children,
+  className = "",
+  isCenter = false,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  isCenter?: boolean;
+}) => (
+  <motion.div
+    variants={hexVariants}
+    className={`relative aspect-[0.866/1] w-full ${className}`}
+  >
+    <div
+      className={`absolute inset-0 bg-gradient-to-br transition-all duration-500 ${
+        isCenter
+          ? "from-[#A855F7] to-[#818CF8] opacity-25 blur-[30px]"
+          : "from-[#A855F7]/30 to-[#818CF8]/30 opacity-0 group-hover:opacity-100 blur-[20px]"
+      }`}
+      style={{
+        clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
+      }}
+    />
+    <div
+      className={`group relative h-full w-full transition-all duration-500 ${
+        !isCenter ? "hover:-translate-y-2" : ""
+      }`}
+      style={{
+        clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
+      }}
     >
-      <div className="absolute -inset-[1px] rounded-[1.6rem] bg-gradient-to-b from-[#A855F7]/30 to-[#818CF8]/16 opacity-0 blur-[2px] transition-opacity duration-500 group-hover:opacity-100" />
-
-      <div className="theme-card relative flex flex-col items-center px-6 py-10 transition-all duration-500 group-hover:-translate-y-2">
-        <div className="relative mb-6">
-          <div className="absolute -inset-1.5 rounded-full bg-gradient-to-br from-[#A855F7] to-[#818CF8] opacity-55 blur-[4px]" />
-          <div className="relative h-32 w-32 overflow-hidden rounded-full ring-[3px] ring-[#2D374F] transition-all duration-500 group-hover:ring-[#A855F7]/70">
-            <Image
-              src={member.image}
-              alt={member.name}
-              fill
-              className="object-cover transition-transform duration-500 group-hover:scale-110"
-            />
-          </div>
-        </div>
-
-        <h3 className="mb-2 text-center text-xl font-bold tracking-tight text-[#F8FAFC]">
-          {member.name}
-        </h3>
-
-        <span className="mb-6 inline-flex rounded-full border border-[#3E2570] bg-[#1C1635] px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-[#C084FC]">
-          {member.role}
-        </span>
-
-        <div className="mb-6 h-px w-16 bg-gradient-to-r from-transparent via-[#A855F7]/50 to-transparent" />
-
-        <a
-          href={`tel:${member.phone}`}
-          className="mb-2 text-base font-medium tracking-wide text-[#c9bedb] hover:text-[#F8FAFC]"
-        >
-          {member.phone}
-        </a>
-
-        <a
-          href={`mailto:${member.email}`}
-          className="text-sm tracking-wide text-[#9e8db3] hover:text-[#F8FAFC]"
-        >
-          {member.email}
-        </a>
+      <div
+        className={`absolute inset-[1.5px] bg-gradient-to-b ${
+          isCenter
+            ? "from-[#A855F7] to-[#818CF8]"
+            : "from-[#1a1b2e] to-[#0f1021] border border-maze-border/20 transition-colors duration-500 group-hover:from-[#A855F7]/25 group-hover:to-[#818CF8]/15"
+        }`}
+        style={{
+          clipPath: "polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)",
+        }}
+      />
+      <div
+        className={`relative flex h-full w-full flex-col items-center justify-center overflow-hidden p-4 sm:p-6 text-center ${
+          isCenter ? "text-white" : ""
+        }`}
+      >
+        {children}
       </div>
-    </motion.div>
-  );
+    </div>
+  </motion.div>
+);
+
+export default function ContactUs() {
+  const hexSize = 250;
+  const gap = 8;
+  
+  const hexPositions = useMemo(() => {
+    const w = hexSize + gap;
+    const h = (hexSize / 0.866) + gap;
+    
+    return [
+      { x: -0.5 * w, y: -0.75 * h }, // 0: Top-Left
+      { x: 0.5 * w, y: -0.75 * h },  // 1: Top-Right
+      { x: w, y: 0 },                // 2: Right
+      { x: 0.5 * w, y: 0.75 * h },   // 3: Bottom-Right
+      { x: -0.5 * w, y: 0.75 * h },  // 4: Bottom-Left
+      { x: -w, y: 0 },               // 5: Left
+    ];
+  }, []);
 
   return (
-    <section id="contact" className="theme-section-alt relative overflow-hidden py-20 lg:py-28">
-      <div className="absolute top-20 left-1/4 h-[500px] w-[500px] rounded-full bg-[#A855F7]/8 opacity-40 blur-[150px] pointer-events-none" />
-      <div className="absolute bottom-20 right-1/4 h-[400px] w-[400px] rounded-full bg-[#818CF8]/8 opacity-40 blur-[120px] pointer-events-none" />
+    <section id="contact" className="theme-section-alt relative overflow-hidden py-24 lg:py-40">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[800px] w-[800px] rounded-full bg-[#A855F7]/8 opacity-20 blur-[200px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[700px] w-[700px] rounded-full bg-[#818CF8]/8 opacity-20 blur-[180px] pointer-events-none" />
 
-      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="mb-16 text-center"
-        >
-          <span className="theme-kicker mb-5">Get In Touch</span>
-          <h2 className="mb-4 text-3xl font-bold sm:text-4xl lg:text-5xl">
-            <span className="text-[#F8FAFC]">Contact </span>
-            <span className="gradient-text">Us</span>
-          </h2>
-          <p className="mx-auto max-w-2xl text-base leading-relaxed text-[#9e8db3] sm:text-lg">
-            Have questions about MazeX 1.0? Reach out to our organizing
-            committee.
-          </p>
-          <div className="mt-6 mx-auto h-1 w-24 rounded-full bg-gradient-to-r from-[#A855F7] to-[#818CF8]" />
-        </motion.div>
-
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 font-heading">
         <motion.div
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: "-50px" }}
-          className="mb-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:mb-8 lg:grid-cols-3 lg:gap-8"
+          viewport={{ once: true, margin: "-100px" }}
+          className="relative flex flex-col items-center justify-center gap-12 lg:gap-0 lg:h-[800px]"
         >
-          {topRow.map(renderCard)}
-        </motion.div>
+          {/* CENTER HUB */}
+          <div className="lg:absolute lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 w-full max-w-[250px] z-30 order-first lg:order-none">
+            <Hexagon isCenter>
+              <div className="flex flex-col items-center">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white/10 backdrop-blur-md ring-1 ring-white/20">
+                   <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                   </svg>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black uppercase tracking-[0.3em] leading-tight text-white drop-shadow-md">
+                  Contact <br /> Us
+                </h2>
+              </div>
+            </Hexagon>
+          </div>
 
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-50px" }}
-          className="flex flex-col justify-center gap-6 sm:flex-row lg:gap-8"
-        >
-          {bottomRow.map((member) => (
-            <div
-              key={member.email}
-              className="w-full sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1.33rem)]"
-            >
-              {renderCard(member)}
+          {/* CONTACT CARDS */}
+          {TEAM_MEMBERS.map((member, index) => {
+            // Swap Raneesha Fernando (index 3) with index 5 (Previously Decorative)
+            let posIndex = index;
+            if (index === 3) posIndex = 5; // Raneesha moves to Left pos
+            
+            const pos = hexPositions[posIndex];
+            return (
+              <div
+                key={member.email}
+                className="w-full max-w-[250px] lg:absolute lg:top-1/2 lg:left-1/2"
+                style={{
+                  '--tx': `${pos.x}px`,
+                  '--ty': `${pos.y}px`
+                } as any}
+              >
+                <div className="lg:[transform:translate(calc(-50%+var(--tx)),calc(-50%+var(--ty)))]">
+                  <Hexagon>
+                    <div className="flex flex-col items-center w-full">
+                      <div className="relative mb-3 h-20 w-20 overflow-hidden rounded-full ring-2 ring-maze-border/40 transition-all duration-500 group-hover:ring-[#A855F7]/60 shadow-xl">
+                        <Image
+                          src={member.image}
+                          alt={member.name}
+                          fill
+                          className="object-cover grayscale transition-all duration-500 group-hover:grayscale-0 group-hover:scale-110"
+                        />
+                      </div>
+                      
+                      <h3 className="mb-0.5 text-xs sm:text-sm font-bold tracking-tight text-[#F8FAFC]">
+                        {member.name}
+                      </h3>
+                      
+                      <span className="mb-3 text-[8px] sm:text-[9px] font-bold uppercase tracking-[0.16em] text-[#C084FC]">
+                        {member.role}
+                      </span>
+
+                      <div className="flex flex-col gap-0.5 items-center">
+                        <a
+                          href={`tel:${member.phone}`}
+                          className="text-[9px] sm:text-[10px] font-medium text-[#c9bedb] hover:text-[#F8FAFC] transition-colors"
+                        >
+                          {member.phone}
+                        </a>
+                        <a
+                          href={`mailto:${member.email}`}
+                          className="text-[8px] sm:text-[9px] text-[#9e8db3] hover:text-[#F8FAFC] transition-colors truncate max-w-[170px]"
+                        >
+                          {member.email}
+                        </a>
+                      </div>
+                    </div>
+                  </Hexagon>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* DECORATIVE HEX (New position: Bottom-Right, index 3) */}
+          <div 
+            className="hidden lg:block lg:absolute lg:top-1/2 lg:left-1/2 opacity-10"
+            style={{
+              '--tx': `${hexPositions[3].x}px`,
+              '--ty': `${hexPositions[3].y}px`
+            } as any}
+          >
+            <div className="w-[250px] lg:[transform:translate(calc(-50%+var(--tx)),calc(-50%+var(--ty)))]">
+               <Hexagon>
+                <div className="h-full w-full flex items-center justify-center">
+                  <div className="h-8 w-8 border border-dashed border-[#A855F7]/30 rounded-full animate-pulse" />
+                </div>
+               </Hexagon>
             </div>
-          ))}
+          </div>
         </motion.div>
       </div>
     </section>

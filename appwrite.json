@@ -61,6 +61,7 @@
                     "required": true,
                     "array": false,
                     "size": 128,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -69,6 +70,7 @@
                     "required": true,
                     "array": false,
                     "size": 2048,
+                    "encrypt": false,
                     "default": null
                 }
             ],
@@ -95,6 +97,7 @@
                     "required": true,
                     "array": false,
                     "size": 255,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -103,6 +106,7 @@
                     "required": false,
                     "array": false,
                     "size": 2048,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -111,6 +115,7 @@
                     "required": true,
                     "array": false,
                     "size": 255,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -139,6 +144,7 @@
                     "required": true,
                     "array": false,
                     "size": 128,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -147,6 +153,7 @@
                     "required": true,
                     "array": false,
                     "size": 255,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -155,6 +162,7 @@
                     "required": false,
                     "array": false,
                     "size": 1024,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -163,6 +171,7 @@
                     "required": true,
                     "array": false,
                     "size": 32,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -171,6 +180,7 @@
                     "required": true,
                     "array": false,
                     "size": 32,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -179,6 +189,7 @@
                     "required": false,
                     "array": false,
                     "size": 64,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -187,6 +198,7 @@
                     "required": false,
                     "array": false,
                     "size": 64,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -195,6 +207,41 @@
                     "required": false,
                     "array": false,
                     "size": 4096,
+                    "encrypt": false,
+                    "default": null
+                },
+                {
+                    "key": "confirmationEmailEnabled",
+                    "type": "boolean",
+                    "required": false,
+                    "array": false,
+                    "default": false
+                },
+                {
+                    "key": "confirmationEmailTemplate",
+                    "type": "string",
+                    "required": false,
+                    "array": false,
+                    "size": 8192,
+                    "encrypt": false,
+                    "default": null
+                },
+                {
+                    "key": "confirmationEmailFieldId",
+                    "type": "string",
+                    "required": false,
+                    "array": false,
+                    "size": 255,
+                    "encrypt": false,
+                    "default": null
+                },
+                {
+                    "key": "confirmationNameFieldId",
+                    "type": "string",
+                    "required": false,
+                    "array": false,
+                    "size": 255,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -221,6 +268,7 @@
                     "required": false,
                     "array": false,
                     "size": 255,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -256,6 +304,7 @@
                     "required": true,
                     "array": false,
                     "size": 255,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -264,6 +313,7 @@
                     "required": true,
                     "array": false,
                     "size": 32,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -272,6 +322,7 @@
                     "required": true,
                     "array": false,
                     "size": 128,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -280,6 +331,7 @@
                     "required": true,
                     "array": false,
                     "size": 255,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -288,6 +340,7 @@
                     "required": true,
                     "array": false,
                     "size": 32,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -312,7 +365,40 @@
                     "required": false,
                     "array": false,
                     "size": 8192,
+                    "encrypt": false,
                     "default": null
+                },
+                {
+                    "key": "placeholder",
+                    "type": "string",
+                    "required": false,
+                    "array": false,
+                    "size": 512,
+                    "encrypt": false,
+                    "default": null
+                },
+                {
+                    "key": "helpText",
+                    "type": "string",
+                    "required": false,
+                    "array": false,
+                    "size": 2048,
+                    "encrypt": false,
+                    "default": null
+                },
+                {
+                    "key": "isUnique",
+                    "type": "boolean",
+                    "required": false,
+                    "array": false,
+                    "default": false
+                },
+                {
+                    "key": "uniqueCaseSensitive",
+                    "type": "boolean",
+                    "required": false,
+                    "array": false,
+                    "default": false
                 }
             ],
             "indexes": [
@@ -338,6 +424,7 @@
                     "required": true,
                     "array": false,
                     "size": 255,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -346,6 +433,7 @@
                     "required": false,
                     "array": false,
                     "size": 255,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -354,6 +442,7 @@
                     "required": true,
                     "array": false,
                     "size": 16384,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -362,6 +451,7 @@
                     "required": false,
                     "array": false,
                     "size": 32768,
+                    "encrypt": false,
                     "default": null
                 },
                 {
@@ -370,6 +460,7 @@
                     "required": false,
                     "array": false,
                     "size": 4096,
+                    "encrypt": false,
                     "default": null
                 }
             ],
@@ -378,6 +469,81 @@
                     "key": "by_form",
                     "type": "key",
                     "attributes": ["formId"],
+                    "orders": []
+                }
+            ]
+        },
+        {
+            "$id": "registration_unique_values",
+            "$permissions": [],
+            "databaseId": "mazex_data",
+            "name": "Registration Unique Values",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [
+                {
+                    "key": "formId",
+                    "type": "string",
+                    "required": true,
+                    "array": false,
+                    "size": 255,
+                    "encrypt": false,
+                    "default": null
+                },
+                {
+                    "key": "fieldId",
+                    "type": "string",
+                    "required": true,
+                    "array": false,
+                    "size": 255,
+                    "encrypt": false,
+                    "default": null
+                },
+                {
+                    "key": "valueHash",
+                    "type": "string",
+                    "required": true,
+                    "array": false,
+                    "size": 128,
+                    "encrypt": false,
+                    "default": null
+                },
+                {
+                    "key": "valuePreview",
+                    "type": "string",
+                    "required": false,
+                    "array": false,
+                    "size": 255,
+                    "encrypt": false,
+                    "default": null
+                },
+                {
+                    "key": "submissionId",
+                    "type": "string",
+                    "required": false,
+                    "array": false,
+                    "size": 255,
+                    "encrypt": false,
+                    "default": null
+                }
+            ],
+            "indexes": [
+                {
+                    "key": "by_form",
+                    "type": "key",
+                    "attributes": ["formId"],
+                    "orders": []
+                },
+                {
+                    "key": "by_field",
+                    "type": "key",
+                    "attributes": ["fieldId"],
+                    "orders": []
+                },
+                {
+                    "key": "unique_field_value",
+                    "type": "unique",
+                    "attributes": ["fieldId", "valueHash"],
                     "orders": []
                 }
             ]
@@ -407,6 +573,28 @@
             "compression": "gzip",
             "encryption": true,
             "antivirus": true
+        }
+    ],
+    "functions": [
+        {
+            "$id": "registration_confirmation_email",
+            "name": "Registration Confirmation Email",
+            "runtime": "node-22",
+            "execute": [],
+            "events": ["databases.*.collections.*.documents.*.create"],
+            "scopes": [
+                "databases.read",
+                "databases.write",
+                "documents.read",
+                "documents.write"
+            ],
+            "schedule": "",
+            "timeout": 30,
+            "enabled": true,
+            "logging": true,
+            "entrypoint": "src/main.js",
+            "commands": "npm install --omit=dev",
+            "path": "functions/send-registration-confirmation-email"
         }
     ],
     "teams": [],

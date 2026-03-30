@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, type ReactNode } from "react";
-import { useFormStatus } from "react-dom";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Reorder } from "framer-motion";
 import {
@@ -18,12 +18,17 @@ import {
   bulkSaveRegistrationFieldsAction,
   type RegistrationAdminActionState,
 } from "@/app/admin/registrations/actions";
-import { formatOptionsForTextarea } from "@/lib/registration-display";
 import type {
-  FieldDefinition, FieldType, FieldScope,
+  FieldDefinition, FieldType,
   FormDefinition, FormWithFields,
 } from "@/lib/registration-types";
-import { MAX_REGISTRATION_FORMS, REGISTRATION_FORM_KINDS } from "@/lib/registration-types";
+import {
+  fieldTypeSupportsCaseSensitiveUnique,
+  fieldTypeSupportsPlaceholder,
+  fieldTypeSupportsUnique,
+  MAX_REGISTRATION_FORMS,
+  REGISTRATION_FORM_KINDS,
+} from "@/lib/registration-types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const IDLE: RegistrationAdminActionState = { status: "idle", message: null, toastKey: 0 };
@@ -38,8 +43,6 @@ const TYPE_LABELS: Record<FieldType, string> = {
 const ALL_TYPES = Object.keys(TYPE_LABELS).filter(t => t !== "page_break") as FieldType[];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
-
 function localDt(v: string | null) {
   if (!v) return "";
   const d = new Date(v);
@@ -50,6 +53,43 @@ function localDt(v: string | null) {
   const hh = String(d.getHours()).padStart(2, "0");
   const mm = String(d.getMinutes()).padStart(2, "0");
   return `${yyyy}-${MM}-${dd}T${hh}:${mm}`;
+}
+
+function normalizeFieldDraft(field: FieldDefinition): FieldDefinition {
+  if (field.type === "page_break") {
+    return {
+      ...field,
+      scope: "submission",
+      required: false,
+      options: [],
+      placeholder: null,
+      helpText: null,
+      isUnique: false,
+      uniqueCaseSensitive: false,
+    };
+  }
+
+  const isUniqueSupported = fieldTypeSupportsUnique(field.type);
+  const isCaseSensitiveSupported = fieldTypeSupportsCaseSensitiveUnique(field.type);
+
+  return {
+    ...field,
+    placeholder: fieldTypeSupportsPlaceholder(field.type)
+      ? field.placeholder ?? null
+      : null,
+    helpText: field.helpText ?? null,
+    options:
+      field.type === "select" || field.type === "radio" || field.type === "checkbox"
+        ? field.options.length > 0
+          ? field.options
+          : [{ label: "Option 1", value: "option_1" }]
+        : field.options,
+    isUnique: isUniqueSupported ? field.isUnique : false,
+    uniqueCaseSensitive:
+      isUniqueSupported && isCaseSensitiveSupported && field.isUnique
+        ? field.uniqueCaseSensitive
+        : false,
+  };
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -170,18 +210,54 @@ function SettingsPanel({ form }: { form: FormWithFields }) {
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [slug, setSlug] = useState(form.slug);
+  const [confirmationEmailEnabled, setConfirmationEmailEnabled] = useState(
+    form.confirmationEmailEnabled,
+  );
+  const [confirmationEmailTemplate, setConfirmationEmailTemplate] = useState(
+    form.confirmationEmailTemplate ?? "",
+  );
   const [settingsState, settingsDispatch] = useActionState(updateRegistrationFormSettingsAction, IDLE);
   const [deleteState, deleteDispatch] = useActionState(deleteRegistrationFormAction, IDLE);
   const st = useToast(settingsState);
   const dt = useToast(deleteState);
   const toast = st.visible ?? dt.visible;
+  const emailFieldOptions = form.fields.filter(
+    (field) => field.scope === "submission" && field.type === "email",
+  );
+  const nameFieldOptions = form.fields.filter(
+    (field) => field.scope === "submission" && field.type === "text",
+  );
 
-  const [formVersion, setFormVersion] = useState(form.id + ":" + form.slug);
-  if (form.id + ":" + form.slug !== formVersion) {
-    setFormVersion(form.id + ":" + form.slug);
+  useEffect(() => {
     setSlug(form.slug);
+    setConfirmationEmailEnabled(form.confirmationEmailEnabled);
+    setConfirmationEmailTemplate(form.confirmationEmailTemplate ?? "");
     setConfirmDelete(false);
-  }
+  }, [
+    form.id,
+    form.slug,
+    form.confirmationEmailEnabled,
+    form.confirmationEmailTemplate,
+    form.confirmationEmailFieldId,
+    form.confirmationNameFieldId,
+  ]);
+
+  const settingsFormKey = [
+    form.id,
+    form.title,
+    form.slug,
+    form.status,
+    form.description ?? "",
+    form.openAt ?? "",
+    form.closeAt ?? "",
+    form.successMessage ?? "",
+    String(form.teamMinMembers),
+    String(form.teamMaxMembers),
+    form.confirmationEmailEnabled ? "1" : "0",
+    form.confirmationEmailTemplate ?? "",
+    form.confirmationEmailFieldId ?? "",
+    form.confirmationNameFieldId ?? "",
+  ].join(":");
 
   return (
     <>
@@ -194,7 +270,11 @@ function SettingsPanel({ form }: { form: FormWithFields }) {
         </button>
 
         {open && (
-           <form action={settingsDispatch} className="border-t border-zinc-200 px-6 pb-6 pt-4 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+           <form
+            key={settingsFormKey}
+            action={settingsDispatch}
+            className="border-t border-zinc-200 px-6 pb-6 pt-4 dark:border-zinc-800 bg-white dark:bg-zinc-900"
+          >
             <input type="hidden" name="formId" value={form.id} />
              <div className="grid gap-5 sm:grid-cols-2">
               <div className="sm:col-span-2">
@@ -254,6 +334,100 @@ function SettingsPanel({ form }: { form: FormWithFields }) {
                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Success message</label>
                 <textarea name="successMessage" rows={3} defaultValue={form.successMessage ?? ""}
                   className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400" />
+              </div>
+              <div className="sm:col-span-2 rounded-lg border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/50">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Confirmation email
+                    </label>
+                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                      Send the Appwrite confirmation email after a successful submission.
+                    </p>
+                  </div>
+                  <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    <span>{confirmationEmailEnabled ? "Enabled" : "Disabled"}</span>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmationEmailEnabled((value) => !value)}
+                      className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${confirmationEmailEnabled ? "bg-zinc-900 dark:bg-zinc-100" : "bg-zinc-300 dark:bg-zinc-700"}`}
+                    >
+                      <span className={`inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${confirmationEmailEnabled ? "translate-x-4 dark:bg-zinc-900" : "translate-x-0.5"}`} />
+                    </button>
+                  </label>
+                </div>
+                <input
+                  type="checkbox"
+                  name="confirmationEmailEnabled"
+                  checked={confirmationEmailEnabled}
+                  onChange={(event) => setConfirmationEmailEnabled(event.target.checked)}
+                  className="sr-only"
+                />
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Recipient email field
+                    </label>
+                    <select
+                      name="confirmationEmailFieldId"
+                      defaultValue={form.confirmationEmailFieldId ?? ""}
+                      disabled={!confirmationEmailEnabled || emailFieldOptions.length === 0}
+                      className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
+                    >
+                      <option value="">Select submission email field</option>
+                      {emailFieldOptions.map((field) => (
+                        <option key={field.id} value={field.id}>
+                          {field.label}
+                        </option>
+                      ))}
+                    </select>
+                    {emailFieldOptions.length === 0 && (
+                      <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                        Add a submission email field before enabling confirmation emails.
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Recipient name field
+                    </label>
+                    <select
+                      name="confirmationNameFieldId"
+                      defaultValue={form.confirmationNameFieldId ?? ""}
+                      disabled={!confirmationEmailEnabled || nameFieldOptions.length === 0}
+                      className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
+                    >
+                      <option value="">Select submission short answer field</option>
+                      {nameFieldOptions.map((field) => (
+                        <option key={field.id} value={field.id}>
+                          {field.label}
+                        </option>
+                      ))}
+                    </select>
+                    {nameFieldOptions.length === 0 && (
+                      <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                        Add a submission short answer field for the recipient name.
+                      </p>
+                    )}
+                  </div>
+                  <div className="sm:col-span-2 mt-2">
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      Email Template Text
+                    </label>
+                    <textarea
+                      name="confirmationEmailTemplate"
+                      rows={5}
+                      value={confirmationEmailTemplate}
+                      onChange={(e) => setConfirmationEmailTemplate(e.target.value)}
+                      disabled={!confirmationEmailEnabled}
+                      placeholder="Optional. Add custom text to appear before the user's answers in the email. Leaves it blank to use the default message."
+                      className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
+                    />
+                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                      The user's submitted answers will automatically be appended below this text.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -323,13 +497,191 @@ function OptionList({ type, options, onChange }: {
   );
 }
 
+function FieldSettingsModal({
+  field,
+  onChange,
+  onClose,
+}: {
+  field: FieldDefinition;
+  onChange: (field: FieldDefinition) => void;
+  onClose: () => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  const placeholderSupported = fieldTypeSupportsPlaceholder(field.type);
+  const uniqueSupported = fieldTypeSupportsUnique(field.type);
+  const caseSensitiveSupported = fieldTypeSupportsCaseSensitiveUnique(field.type);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [mounted, onClose]);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+      <button
+        type="button"
+        aria-label="Close field settings"
+        onClick={onClose}
+        className="absolute inset-0 bg-zinc-950/70 backdrop-blur-sm"
+      />
+
+      <div className="relative z-[101] w-full max-w-xl overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex items-start justify-between gap-4 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800 sm:px-6">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">
+              Field Settings
+            </p>
+            <h3 className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+              {field.label || "Untitled question"}
+            </h3>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              {TYPE_LABELS[field.type]}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="space-y-5 px-5 py-5 sm:px-6">
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-950/60">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                  Unique matching
+                </p>
+                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                  {uniqueSupported
+                    ? "Choose whether matching should respect letter casing when this field is marked unique."
+                    : "This field type does not support unique matching."}
+                </p>
+              </div>
+              <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                <span>
+                  {field.isUnique && caseSensitiveSupported ? "Case sensitive" : "Case insensitive"}
+                </span>
+                <button
+                  type="button"
+                  disabled={!uniqueSupported || !field.isUnique || !caseSensitiveSupported}
+                  onClick={() =>
+                    onChange(
+                      normalizeFieldDraft({
+                        ...field,
+                        uniqueCaseSensitive: !field.uniqueCaseSensitive,
+                      }),
+                    )
+                  }
+                  className={`relative inline-flex h-5 w-9 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                    field.isUnique && field.uniqueCaseSensitive && caseSensitiveSupported
+                      ? "bg-zinc-900 dark:bg-zinc-100"
+                      : "bg-zinc-300 dark:bg-zinc-700"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${
+                      field.isUnique && field.uniqueCaseSensitive && caseSensitiveSupported
+                        ? "translate-x-4 dark:bg-zinc-900"
+                        : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+              Placeholder
+            </label>
+            {placeholderSupported ? (
+              <input
+                type="text"
+                value={field.placeholder ?? ""}
+                onChange={(event) =>
+                  onChange(
+                    normalizeFieldDraft({
+                      ...field,
+                      placeholder: event.target.value,
+                    }),
+                  )
+                }
+                placeholder="Type the hint shown inside the input"
+                className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
+              />
+            ) : (
+              <p className="rounded-md border border-dashed border-zinc-300 px-3 py-2 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+                Placeholder text is only available for short text, paragraph, number, date, time, email, phone, and dropdown fields.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+              Help text
+            </label>
+            <textarea
+              rows={4}
+              value={field.helpText ?? ""}
+              onChange={(event) =>
+                onChange(
+                  normalizeFieldDraft({
+                    ...field,
+                    helpText: event.target.value,
+                  }),
+                )
+              }
+              placeholder="Add extra guidance below the field label"
+              className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end border-t border-zinc-200 px-5 py-4 dark:border-zinc-800 sm:px-6">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 // ─── Field Preview (non-choice types) ────────────────────────────────────────
-function FieldPreview({ type }: { type: FieldType }) {
+function FieldPreview({ field }: { field: FieldDefinition }) {
+  const { type, placeholder } = field;
   if (type === "text" || type === "email" || type === "tel" || type === "number" || type === "date" || type === "time") {
-    return <div className="mt-4 border-b border-dashed border-zinc-300 pb-2 dark:border-zinc-700 w-[60%]"><span className="text-sm font-medium text-zinc-400 dark:text-zinc-500">{TYPE_LABELS[type]} answer</span></div>;
+    return <div className="mt-4 border-b border-dashed border-zinc-300 pb-2 dark:border-zinc-700 w-[60%]"><span className="text-sm font-medium text-zinc-400 dark:text-zinc-500">{placeholder?.trim() || `${TYPE_LABELS[type]} answer`}</span></div>;
   }
   if (type === "textarea") {
-    return <div className="mt-4 border-b border-dashed border-zinc-300 pb-6 dark:border-zinc-700 w-full"><span className="text-sm font-medium text-zinc-400 dark:text-zinc-500">Long answer text</span></div>;
+    return <div className="mt-4 border-b border-dashed border-zinc-300 pb-6 dark:border-zinc-700 w-full"><span className="text-sm font-medium text-zinc-400 dark:text-zinc-500">{placeholder?.trim() || "Long answer text"}</span></div>;
   }
   if (type === "file") {
     return (
@@ -360,23 +712,26 @@ function FieldCard({ field, onChange, onDelete }: {
 }) {
   const { label, type, scope, required, options } = field;
   const isChoiceType = type === "select" || type === "radio" || type === "checkbox";
+  const isUniqueSupported = fieldTypeSupportsUnique(type);
+  const [showSettings, setShowSettings] = useState(false);
 
   const update = (updates: Partial<FieldDefinition>) => {
-    onChange({ ...field, ...updates });
+    onChange(normalizeFieldDraft({ ...field, ...updates }));
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition-all focus-within:ring-2 focus-within:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:focus-within:ring-zinc-400">
+    <>
+      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition-all focus-within:ring-2 focus-within:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:focus-within:ring-zinc-400">
 
-      {/* Drag handle */}
-      <div className="flex cursor-grab justify-center py-2 opacity-30 transition-opacity hover:opacity-100 active:cursor-grabbing bg-zinc-50 dark:bg-zinc-950/50">
-        <GripHorizontal className="h-4 w-4 text-zinc-500" />
-      </div>
+        {/* Drag handle */}
+        <div className="flex cursor-grab justify-center bg-zinc-50 py-2 opacity-30 transition-opacity hover:opacity-100 active:cursor-grabbing dark:bg-zinc-950/50">
+          <GripHorizontal className="h-4 w-4 text-zinc-500" />
+        </div>
 
-      {/* Question row */}
-      {type !== "page_break" && (
-        <div className="flex flex-col sm:flex-row items-start gap-4 px-6 pt-2 pb-4">
-          <input value={label} onChange={e => {
+        {/* Question row */}
+        {type !== "page_break" && (
+          <div className="flex flex-col items-start gap-3 px-6 pt-2 pb-4 sm:flex-row">
+            <input value={label} onChange={e => {
               const newLabel = e.target.value;
               const newKey = newLabel.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "field";
               update({ label: newLabel, key: newKey });
@@ -384,67 +739,109 @@ function FieldCard({ field, onChange, onDelete }: {
             className="flex-1 w-full border-0 border-b-2 border-zinc-100 bg-transparent px-0 pb-2 text-base font-medium text-zinc-900 focus:border-zinc-900 focus:ring-0 dark:border-zinc-800 dark:text-zinc-50 dark:focus:border-zinc-400"
             placeholder="Untitled question" />
 
-          {/* Type selector */}
-          <div className="relative shrink-0 w-full sm:w-48 mt-2 sm:mt-0">
-            <select value={type} onChange={e => update({ type: e.target.value as FieldType })}
-              className="block w-full appearance-none rounded-md border border-zinc-300 bg-white py-2 pl-3 pr-8 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400">
-              {ALL_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 h-4 w-4 text-zinc-500" />
+            {/* Type selector */}
+            <div className="relative mt-2 w-full shrink-0 sm:mt-0 sm:w-48">
+              <select value={type} onChange={e => update({ type: e.target.value as FieldType })}
+                className="block w-full appearance-none rounded-md border border-zinc-300 bg-white py-2 pl-3 pr-8 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400">
+                {ALL_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 h-4 w-4 text-zinc-500" />
+            </div>
           </div>
+        )}
+
+        {type !== "page_break" && field.helpText && (
+          <p className="-mt-1 px-6 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+            {field.helpText}
+          </p>
+        )}
+
+        {/* Body: options or preview */}
+        <div className="px-6 pb-6">
+          {isChoiceType
+            ? <OptionList type={type} options={(options || []).map((o, i) => ({ id: `o${i}`, ...o }))} onChange={(o) => update({ options: o.map((opt) => ({ label: opt.label, value: opt.value })) })} />
+            : <FieldPreview field={field} />
+          }
         </div>
-      )}
 
-      {/* Body: options or preview */}
-      <div className="px-6 pb-6">
-        {isChoiceType
-          ? <OptionList type={type} options={(options || []).map((o, i) => ({ id: `o${i}`, ...o }))} onChange={(o) => update({ options: o.map((opt) => ({ label: opt.label, value: opt.value })) })} />
-          : <FieldPreview type={type} />
-        }
-      </div>
+        {/* Bottom bar */}
+        <div className="border-t border-zinc-100 bg-zinc-50 px-6 py-3 dark:border-zinc-800/80 dark:bg-zinc-950">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className={type === "page_break" ? "hidden" : "block"}>
+              <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                <span>Per member</span>
+                <button type="button" onClick={() => update({ scope: scope === "member" ? "submission" : "member" })}
+                  className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${scope === "member" ? "bg-zinc-900 dark:bg-zinc-100" : "bg-zinc-300 dark:bg-zinc-700"}`}>
+                  <span className={`inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${scope === "member" ? "translate-x-4 dark:bg-zinc-900" : "translate-x-0.5"}`} />
+                </button>
+              </label>
+            </div>
 
-      {/* Bottom bar */}
-      <div className="border-t border-zinc-100 bg-zinc-50 px-6 py-3 dark:border-zinc-800/80 dark:bg-zinc-950">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className={type === "page_break" ? "hidden" : "block"}>
-            <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-              <span>Per member</span>
-              <button type="button" onClick={() => update({ scope: scope === "member" ? "submission" : "member" })}
-                className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${scope === "member" ? "bg-zinc-900 dark:bg-zinc-100" : "bg-zinc-300 dark:bg-zinc-700"}`}>
-                <span className={`inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${scope === "member" ? "translate-x-4 dark:bg-zinc-900" : "translate-x-0.5"}`} />
-              </button>
-            </label>
-          </div>
+            <div className="ml-auto flex items-center gap-5">
+              {type !== "page_break" && (
+                <>
+                  <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    Required
+                    <button type="button" onClick={() => update({ required: !required })}
+                      className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${required ? "bg-zinc-900 dark:bg-zinc-100" : "bg-zinc-300 dark:bg-zinc-700"}`}>
+                      <span className={`inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${required ? "translate-x-4 dark:bg-zinc-900" : "translate-x-0.5"}`} />
+                    </button>
+                  </label>
 
-          <div className="ml-auto flex items-center gap-6">
-            <button type="button" onClick={onDelete} className="text-zinc-400 hover:text-rose-500 transition-colors" title={type === "page_break" ? "Delete Page Break" : "Delete Question"}>
-              <Trash2 className="h-4 w-4" />
-            </button>
+                  <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    Unique
+                    <button
+                      type="button"
+                      disabled={!isUniqueSupported}
+                      onClick={() => update({ isUnique: !field.isUnique })}
+                      className={`relative inline-flex h-5 w-9 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                        field.isUnique ? "bg-zinc-900 dark:bg-zinc-100" : "bg-zinc-300 dark:bg-zinc-700"
+                      }`}
+                      title={
+                        isUniqueSupported
+                          ? "Prevent duplicate values for this field"
+                          : "Unique validation is not supported for this field type"
+                      }
+                    >
+                      <span className={`inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${field.isUnique ? "translate-x-4 dark:bg-zinc-900" : "translate-x-0.5"}`} />
+                    </button>
+                  </label>
 
-            {type !== "page_break" && (
-              <>
-                <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-700" />
-
-                <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                  Required
-                  <button type="button" onClick={() => update({ required: !required })}
-                    className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${required ? "bg-zinc-900 dark:bg-zinc-100" : "bg-zinc-300 dark:bg-zinc-700"}`}>
-                    <span className={`inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${required ? "translate-x-4 dark:bg-zinc-900" : "translate-x-0.5"}`} />
+                  <button
+                    type="button"
+                    onClick={() => setShowSettings(true)}
+                    className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-600 transition-colors hover:border-zinc-400 hover:text-zinc-900 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-zinc-500 dark:hover:text-zinc-50"
+                    title="Edit field settings"
+                  >
+                    <Settings2 className="h-3.5 w-3.5" />
+                    Settings
                   </button>
-                </label>
-              </>
-            )}
+                </>
+              )}
+
+              <button type="button" onClick={onDelete} className="text-zinc-400 hover:text-rose-500 transition-colors" title={type === "page_break" ? "Delete Page Break" : "Delete Question"}>
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {showSettings && type !== "page_break" && (
+        <FieldSettingsModal
+          field={field}
+          onChange={onChange}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
+    </>
   );
 }
 
 // ─── Field Builder ────────────────────────────────────────────────────────────
 function FieldBuilder({ form }: { form: FormWithFields }) {
   const [fields, setFields] = useState<FieldDefinition[]>(
-    [...form.fields].sort((a, b) =>
+    [...form.fields].map(normalizeFieldDraft).sort((a, b) =>
       a.sortOrder !== b.sortOrder ? a.sortOrder - b.sortOrder : a.label.localeCompare(b.label)
     )
   );
@@ -461,7 +858,7 @@ function FieldBuilder({ form }: { form: FormWithFields }) {
   if (form.fields !== fieldsVersion) {
     setFieldsVersion(form.fields);
     setFields(
-      [...form.fields].sort((a, b) =>
+      [...form.fields].map(normalizeFieldDraft).sort((a, b) =>
         a.sortOrder !== b.sortOrder ? a.sortOrder - b.sortOrder : a.label.localeCompare(b.label)
       )
     );
@@ -487,7 +884,11 @@ function FieldBuilder({ form }: { form: FormWithFields }) {
         type: "text",
         scope: "submission",
         required: false,
-        options: [{ id: "o0", label: "Option 1", value: "option_1" }],
+        options: [{ label: "Option 1", value: "option_1" }],
+        placeholder: null,
+        helpText: null,
+        isUnique: false,
+        uniqueCaseSensitive: false,
       }
     ]);
     setIsDirty(true);
@@ -506,6 +907,10 @@ function FieldBuilder({ form }: { form: FormWithFields }) {
         scope: "submission",
         required: false,
         options: [],
+        placeholder: null,
+        helpText: null,
+        isUnique: false,
+        uniqueCaseSensitive: false,
       }
     ]);
     setIsDirty(true);
@@ -521,7 +926,7 @@ function FieldBuilder({ form }: { form: FormWithFields }) {
     setIsSaving(true);
     setToastMsg(null);
     try {
-      const payload = fields.map((f, i) => ({ ...f, sortOrder: i }));
+      const payload = fields.map((f, i) => ({ ...normalizeFieldDraft(f), sortOrder: i }));
       const res = await bulkSaveRegistrationFieldsAction(form.id, payload);
       if (res.status === "error") {
         setToastMsg({ type: "error", message: res.message || "Failed to save." });
@@ -551,7 +956,7 @@ function FieldBuilder({ form }: { form: FormWithFields }) {
             <Reorder.Item key={field.id} value={field}>
               <FieldCard 
                 field={field} 
-                onChange={(updated) => { setFields(fs => fs.map(f => f.id === field.id ? updated : f)); setIsDirty(true); }}
+                onChange={(updated) => { setFields(fs => fs.map(f => f.id === field.id ? normalizeFieldDraft(updated) : f)); setIsDirty(true); }}
                 onDelete={() => { setFields(fs => fs.filter(f => f.id !== field.id)); setIsDirty(true); }}
               />
             </Reorder.Item>

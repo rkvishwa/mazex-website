@@ -1,6 +1,7 @@
 import "server-only";
 
-import { Databases, Storage, ID, Query, Models } from "node-appwrite";
+import { createHash } from "node:crypto";
+import { AppwriteException, Databases, Storage, ID, Query, Models } from "node-appwrite";
 import { InputFile } from "node-appwrite/file";
 import { unstable_noStore as noStore } from "next/cache";
 import {
@@ -29,6 +30,9 @@ import type {
   SubmissionSummary,
 } from "@/lib/registration-types";
 import {
+  fieldTypeSupportsCaseSensitiveUnique,
+  fieldTypeSupportsPlaceholder,
+  fieldTypeSupportsUnique,
   REGISTRATION_FIELD_SCOPES,
   REGISTRATION_FIELD_TYPES,
   REGISTRATION_FORM_KINDS,
@@ -46,6 +50,10 @@ type FormDoc = Models.Document & {
   openAt?: string | null;
   closeAt?: string | null;
   successMessage?: string | null;
+  confirmationEmailEnabled?: boolean;
+  confirmationEmailTemplate?: string | null;
+  confirmationEmailFieldId?: string | null;
+  confirmationNameFieldId?: string | null;
   teamMinMembers?: number;
   teamMaxMembers?: number;
   bannerFileId?: string | null;
@@ -61,6 +69,10 @@ type FieldDoc = Models.Document & {
   required?: boolean;
   sortOrder?: number;
   optionsJson?: string | null;
+  placeholder?: string | null;
+  helpText?: string | null;
+  isUnique?: boolean;
+  uniqueCaseSensitive?: boolean;
 };
 
 type SubmissionDoc = Models.Document & {
@@ -71,6 +83,14 @@ type SubmissionDoc = Models.Document & {
   searchText?: string | null;
 };
 
+type UniqueValueDoc = Models.Document & {
+  formId?: string;
+  fieldId?: string;
+  valueHash?: string;
+  valuePreview?: string | null;
+  submissionId?: string | null;
+};
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const DEFAULT_SUCCESS_MESSAGE =
@@ -78,6 +98,7 @@ const DEFAULT_SUCCESS_MESSAGE =
 const PAGE_SIZE_DEFAULT = 20;
 const MAX_ROW_PAGE_SIZE = 100;
 const DISPLAY_TIME_ZONE = "Asia/Colombo";
+const UNIQUE_VALUE_PREVIEW_LIMIT = 255;
 
 // ─── Config helpers ──────────────────────────────────────────────────────────
 
@@ -86,6 +107,9 @@ function getRegistrationsConfig() {
   const formsCollectionId = process.env.APPWRITE_COLLECTION_REGISTRATION_FORMS?.trim();
   const fieldsCollectionId = process.env.APPWRITE_COLLECTION_REGISTRATION_FIELDS?.trim();
   const submissionsCollectionId = process.env.APPWRITE_COLLECTION_REGISTRATION_SUBMISSIONS?.trim();
+  const uniqueValuesCollectionId =
+    process.env.APPWRITE_COLLECTION_REGISTRATION_UNIQUE_VALUES?.trim() ||
+    "registration_unique_values";
   const bannersBucketId = process.env.APPWRITE_BUCKET_FORM_BANNERS?.trim();
 
   const missing = [
@@ -106,6 +130,7 @@ function getRegistrationsConfig() {
     formsCollectionId: formsCollectionId!,
     fieldsCollectionId: fieldsCollectionId!,
     submissionsCollectionId: submissionsCollectionId!,
+    uniqueValuesCollectionId,
     bannersBucketId: bannersBucketId ?? "form_banners",
   };
 }
@@ -125,6 +150,16 @@ function createDatabasesService() {
 
 function createStorageService() {
   return new Storage(createAppwriteAdminClient());
+}
+
+export class UniqueFieldConflictError extends Error {
+  fieldErrors: Record<string, string>;
+
+  constructor(fieldErrors: Record<string, string>) {
+    super("One or more fields must be unique.");
+    this.name = "UniqueFieldConflictError";
+    this.fieldErrors = fieldErrors;
+  }
 }
 
 // ─── Type guards ─────────────────────────────────────────────────────────────
@@ -168,6 +203,57 @@ function parseJson<T>(v: string | null | undefined, fallback: T): T {
   }
 }
 
+function normalizeUniqueComparableValue(
+  field: Pick<FieldDefinition, "type" | "isUnique" | "uniqueCaseSensitive" | "label">,
+  value: SubmissionAnswerValue,
+) {
+  if (!field.isUnique || !fieldTypeSupportsUnique(field.type)) return null;
+  if (value === null || value === undefined) return null;
+  if (Array.isArray(value) || value instanceof File || typeof value === "boolean") return null;
+
+  const raw = typeof value === "number" ? String(value) : String(value).trim();
+  if (!raw) return null;
+
+  return field.uniqueCaseSensitive ? raw : raw.toLocaleLowerCase("en-US");
+}
+
+function hashUniqueComparableValue(value: string) {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function buildUniqueFieldErrorMessage(
+  field: Pick<FieldDefinition, "label" | "uniqueCaseSensitive">,
+) {
+  return field.uniqueCaseSensitive
+    ? `${field.label} must be unique. This exact value has already been used.`
+    : `${field.label} must be unique. A matching value already exists.`;
+}
+
+async function listAllDocumentsByQueries<T extends Models.Document>(
+  collectionId: string,
+  baseQueries: string[],
+  pageSize = 100,
+) {
+  const { databaseId } = getRegistrationsConfig();
+  const db = createDatabasesService();
+  const documents: T[] = [];
+  let offset = 0;
+
+  while (true) {
+    const page = await db.listDocuments<T>(databaseId, collectionId, [
+      ...baseQueries,
+      Query.limit(pageSize),
+      Query.offset(offset),
+    ]);
+
+    documents.push(...page.documents);
+    if (page.documents.length < pageSize) break;
+    offset += page.documents.length;
+  }
+
+  return documents;
+}
+
 // ─── Option / Validation normalizers ─────────────────────────────────────────
 
 function normalizeFieldOptions(raw: unknown): FieldOption[] {
@@ -206,6 +292,10 @@ function mapFormDoc(doc: FormDoc): FormDefinition | null {
     openAt: trimNullable(doc.openAt),
     closeAt: trimNullable(doc.closeAt),
     successMessage: trimNullable(doc.successMessage),
+    confirmationEmailEnabled: Boolean(doc.confirmationEmailEnabled),
+    confirmationEmailTemplate: doc.confirmationEmailTemplate || null,
+    confirmationEmailFieldId: trimNullable(doc.confirmationEmailFieldId),
+    confirmationNameFieldId: trimNullable(doc.confirmationNameFieldId),
     teamMinMembers:
       typeof doc.teamMinMembers === "number" && Number.isFinite(doc.teamMinMembers)
         ? doc.teamMinMembers
@@ -242,6 +332,19 @@ function mapFieldDoc(doc: FieldDoc): FieldDefinition | null {
         ? doc.sortOrder
         : 0,
     options: normalizeFieldOptions(parseJson(doc.optionsJson, [])),
+    placeholder: fieldTypeSupportsPlaceholder(doc.type)
+      ? trimNullable(doc.placeholder)
+      : null,
+    helpText: doc.type === "page_break" ? null : trimNullable(doc.helpText),
+    isUnique:
+      fieldTypeSupportsUnique(doc.type) && doc.type !== "page_break"
+        ? Boolean(doc.isUnique)
+        : false,
+    uniqueCaseSensitive:
+      fieldTypeSupportsUnique(doc.type) &&
+      fieldTypeSupportsCaseSensitiveUnique(doc.type) &&
+      Boolean(doc.isUnique) &&
+      Boolean(doc.uniqueCaseSensitive),
   };
 }
 
@@ -522,12 +625,79 @@ export async function createRegistrationForm(params: {
       closeAt: null,
       successMessage:
         "Registration received successfully. We will contact you with the next steps.",
+      confirmationEmailEnabled: false,
+      confirmationEmailTemplate: null,
+      confirmationEmailFieldId: null,
+      confirmationNameFieldId: null,
       teamMinMembers: 1,
       teamMaxMembers: 1,
       bannerFileId: null,
       sortOrder: params.sortOrder,
     },
   );
+}
+
+async function deleteUniqueValueReservationDocuments(documentIds: string[]) {
+  if (documentIds.length === 0) return;
+
+  const { databaseId, uniqueValuesCollectionId } = getRegistrationsConfig();
+  const db = createDatabasesService();
+
+  await Promise.all(
+    documentIds.map(async (documentId) => {
+      try {
+        await db.deleteDocument(databaseId, uniqueValuesCollectionId, documentId);
+      } catch (error) {
+        if (!(error instanceof AppwriteException) || error.code !== 404) {
+          throw error;
+        }
+      }
+    }),
+  );
+}
+
+async function deleteUniqueValueReservationsByFieldIds(fieldIds: string[]) {
+  if (fieldIds.length === 0) return;
+
+  const { uniqueValuesCollectionId } = getRegistrationsConfig();
+
+  try {
+    const docs = (
+      await Promise.all(
+        fieldIds.map((fieldId) =>
+          listAllDocumentsByQueries<UniqueValueDoc>(uniqueValuesCollectionId, [
+            Query.equal("fieldId", fieldId),
+          ]),
+        ),
+      )
+    ).flat();
+
+    await deleteUniqueValueReservationDocuments(docs.map((doc) => doc.$id));
+  } catch (error) {
+    if (!(error instanceof AppwriteException) || error.code !== 404) {
+      throw error;
+    }
+  }
+}
+
+async function deleteUniqueValueReservationsByFormId(formId: string) {
+  const { uniqueValuesCollectionId } = getRegistrationsConfig();
+
+  try {
+    const docs = await listAllDocumentsByQueries<UniqueValueDoc>(
+      uniqueValuesCollectionId,
+      [Query.equal("formId", formId)],
+    );
+    await deleteUniqueValueReservationDocuments(docs.map((doc) => doc.$id));
+  } catch (error) {
+    if (!(error instanceof AppwriteException) || error.code !== 404) {
+      throw error;
+    }
+  }
+}
+
+export async function releaseUniqueValueReservations(documentIds: string[]) {
+  await deleteUniqueValueReservationDocuments(documentIds);
 }
 
 export async function deleteRegistrationForm(formId: string) {
@@ -558,6 +728,8 @@ export async function deleteRegistrationForm(formId: string) {
     ),
   );
 
+  await deleteUniqueValueReservationsByFormId(formId);
+
   // Delete the form
   return db.deleteDocument(databaseId, formsCollectionId, formId);
 }
@@ -573,6 +745,10 @@ export async function updateRegistrationFormSettings(params: {
   openAt: string | null;
   closeAt: string | null;
   successMessage: string | null;
+  confirmationEmailEnabled: boolean;
+  confirmationEmailTemplate?: string | null;
+  confirmationEmailFieldId: string | null;
+  confirmationNameFieldId: string | null;
   teamMinMembers: number;
   teamMaxMembers: number;
 }) {
@@ -589,6 +765,10 @@ export async function updateRegistrationFormSettings(params: {
       openAt: params.openAt,
       closeAt: params.closeAt,
       successMessage: params.successMessage ?? DEFAULT_SUCCESS_MESSAGE,
+      confirmationEmailEnabled: params.confirmationEmailEnabled,
+      confirmationEmailTemplate: params.confirmationEmailTemplate || null,
+      confirmationEmailFieldId: params.confirmationEmailFieldId,
+      confirmationNameFieldId: params.confirmationNameFieldId,
       teamMinMembers: params.teamMinMembers,
       teamMaxMembers: params.teamMaxMembers,
     },
@@ -655,6 +835,10 @@ export async function createRegistrationField(params: {
   required: boolean;
   sortOrder: number;
   options: FieldOption[];
+  placeholder: string | null;
+  helpText: string | null;
+  isUnique: boolean;
+  uniqueCaseSensitive: boolean;
 }) {
   const { databaseId, fieldsCollectionId } = getRegistrationsConfig();
   return createDatabasesService().createDocument<FieldDoc>(
@@ -670,6 +854,10 @@ export async function createRegistrationField(params: {
       required: params.required,
       sortOrder: params.sortOrder,
       optionsJson: JSON.stringify(params.options),
+      placeholder: params.placeholder,
+      helpText: params.helpText,
+      isUnique: params.isUnique,
+      uniqueCaseSensitive: params.uniqueCaseSensitive,
     },
   );
 }
@@ -684,6 +872,10 @@ export async function updateRegistrationField(params: {
   required: boolean;
   sortOrder: number;
   options: FieldOption[];
+  placeholder: string | null;
+  helpText: string | null;
+  isUnique: boolean;
+  uniqueCaseSensitive: boolean;
 }) {
   const { databaseId, fieldsCollectionId } = getRegistrationsConfig();
   return createDatabasesService().updateDocument<FieldDoc>(
@@ -699,13 +891,19 @@ export async function updateRegistrationField(params: {
       required: params.required,
       sortOrder: params.sortOrder,
       optionsJson: JSON.stringify(params.options),
+      placeholder: params.placeholder,
+      helpText: params.helpText,
+      isUnique: params.isUnique,
+      uniqueCaseSensitive: params.uniqueCaseSensitive,
     },
   );
 }
 
 export async function deleteRegistrationField(fieldId: string) {
   const { databaseId, fieldsCollectionId } = getRegistrationsConfig();
-  return createDatabasesService().deleteDocument(databaseId, fieldsCollectionId, fieldId);
+  const db = createDatabasesService();
+  await deleteUniqueValueReservationsByFieldIds([fieldId]);
+  return db.deleteDocument(databaseId, fieldsCollectionId, fieldId);
 }
 
 export async function updateRegistrationFieldOrders(updates: { id: string; sortOrder: number }[]) {
@@ -730,6 +928,10 @@ export async function bulkSaveRegistrationFields(params: {
     required: boolean;
     sortOrder: number;
     options: FieldOption[];
+    placeholder: string | null;
+    helpText: string | null;
+    isUnique: boolean;
+    uniqueCaseSensitive: boolean;
   }[];
   updates: {
     fieldId: string;
@@ -740,6 +942,10 @@ export async function bulkSaveRegistrationFields(params: {
     required: boolean;
     sortOrder: number;
     options: FieldOption[];
+    placeholder: string | null;
+    helpText: string | null;
+    isUnique: boolean;
+    uniqueCaseSensitive: boolean;
   }[];
   deletes: string[];
 }) {
@@ -756,6 +962,10 @@ export async function bulkSaveRegistrationFields(params: {
       required: c.required,
       sortOrder: c.sortOrder,
       optionsJson: JSON.stringify(c.options),
+      placeholder: c.placeholder,
+      helpText: c.helpText,
+      isUnique: c.isUnique,
+      uniqueCaseSensitive: c.uniqueCaseSensitive,
     })
   );
 
@@ -769,6 +979,10 @@ export async function bulkSaveRegistrationFields(params: {
       required: u.required,
       sortOrder: u.sortOrder,
       optionsJson: JSON.stringify(u.options),
+      placeholder: u.placeholder,
+      helpText: u.helpText,
+      isUnique: u.isUnique,
+      uniqueCaseSensitive: u.uniqueCaseSensitive,
     })
   );
 
@@ -776,6 +990,7 @@ export async function bulkSaveRegistrationFields(params: {
     db.deleteDocument(databaseId, fieldsCollectionId, id)
   );
 
+  await deleteUniqueValueReservationsByFieldIds(params.deletes);
   await Promise.all([...createPromises, ...updatePromises, ...deletePromises]);
 }
 
@@ -793,6 +1008,110 @@ function buildSearchText(payload: SubmissionPayload) {
     if (typeof v === "string" || typeof v === "number") parts.push(String(v));
   }
   return parts.join(" ").replace(/\s+/g, " ").trim().slice(0, 4000);
+}
+
+export async function reserveUniqueFieldValues(params: {
+  formId: string;
+  entries: Array<{
+    field: FieldDefinition;
+    value: SubmissionAnswerValue;
+    errorKey: string;
+  }>;
+}) {
+  const normalizedEntries = params.entries
+    .map((entry) => {
+      const comparableValue = normalizeUniqueComparableValue(entry.field, entry.value);
+      if (!comparableValue) return null;
+
+      const rawPreview =
+        typeof entry.value === "number"
+          ? String(entry.value)
+          : String(entry.value).trim();
+
+      return {
+        ...entry,
+        comparableValue,
+        valueHash: hashUniqueComparableValue(comparableValue),
+        valuePreview: rawPreview.slice(0, UNIQUE_VALUE_PREVIEW_LIMIT),
+      };
+    })
+    .filter(
+      (
+        entry,
+      ): entry is {
+        field: FieldDefinition;
+        value: SubmissionAnswerValue;
+        errorKey: string;
+        comparableValue: string;
+        valueHash: string;
+        valuePreview: string;
+      } => entry !== null,
+    );
+
+  const fieldErrors: Record<string, string> = {};
+  const seenByFieldValue = new Map<string, string>();
+
+  for (const entry of normalizedEntries) {
+    const dedupeKey = `${entry.field.id}:${entry.valueHash}`;
+    const firstErrorKey = seenByFieldValue.get(dedupeKey);
+    if (!firstErrorKey) {
+      seenByFieldValue.set(dedupeKey, entry.errorKey);
+      continue;
+    }
+
+    const message = `${entry.field.label} must be unique. Duplicate values are not allowed in the same submission.`;
+    fieldErrors[firstErrorKey] ??= message;
+    fieldErrors[entry.errorKey] = message;
+  }
+
+  if (Object.keys(fieldErrors).length > 0) {
+    throw new UniqueFieldConflictError(fieldErrors);
+  }
+
+  if (normalizedEntries.length === 0) return [];
+
+  const { databaseId, uniqueValuesCollectionId } = getRegistrationsConfig();
+  const db = createDatabasesService();
+  const reservedIds: string[] = [];
+
+  for (const entry of normalizedEntries) {
+    try {
+      const doc = await db.createDocument<UniqueValueDoc>(
+        databaseId,
+        uniqueValuesCollectionId,
+        ID.unique(),
+        {
+          formId: params.formId,
+          fieldId: entry.field.id,
+          valueHash: entry.valueHash,
+          valuePreview: entry.valuePreview,
+          submissionId: null,
+        },
+      );
+
+      reservedIds.push(doc.$id);
+    } catch (error) {
+      await releaseUniqueValueReservations(reservedIds);
+
+      if (error instanceof AppwriteException) {
+        if (error.code === 409) {
+          throw new UniqueFieldConflictError({
+            [entry.errorKey]: buildUniqueFieldErrorMessage(entry.field),
+          });
+        }
+
+        if (error.code === 404) {
+          throw new AppwriteConfigError(
+            "Unique field validation is not configured yet. Run the Appwrite schema setup to create the registration unique-values collection.",
+          );
+        }
+      }
+
+      throw error;
+    }
+  }
+
+  return reservedIds;
 }
 
 export async function createRegistrationSubmission(payload: SubmissionPayload) {

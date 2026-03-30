@@ -15,6 +15,35 @@ export const REGISTRATION_FIELD_TYPES = [
   "file",
   "page_break"
 ] as const;
+export const REGISTRATION_FIELD_PLACEHOLDER_TYPES = [
+  "text",
+  "textarea",
+  "email",
+  "tel",
+  "number",
+  "select",
+  "date",
+  "time",
+] as const;
+export const REGISTRATION_FIELD_UNIQUE_TYPES = [
+  "text",
+  "textarea",
+  "email",
+  "tel",
+  "number",
+  "select",
+  "radio",
+  "date",
+  "time",
+] as const;
+export const REGISTRATION_FIELD_CASE_SENSITIVE_UNIQUE_TYPES = [
+  "text",
+  "textarea",
+  "email",
+  "tel",
+  "select",
+  "radio",
+] as const;
 
 export type RegistrationFormKind = (typeof REGISTRATION_FORM_KINDS)[number];
 export type RegistrationFormStatus = (typeof REGISTRATION_FORM_STATUSES)[number];
@@ -38,6 +67,10 @@ export type FieldDefinition = {
   required: boolean;
   sortOrder: number;
   options: FieldOption[];
+  placeholder: string | null;
+  helpText: string | null;
+  isUnique: boolean;
+  uniqueCaseSensitive: boolean;
 };
 
 export type FormDefinition = {
@@ -50,6 +83,10 @@ export type FormDefinition = {
   openAt: string | null;
   closeAt: string | null;
   successMessage: string | null;
+  confirmationEmailEnabled: boolean;
+  confirmationEmailTemplate: string | null;
+  confirmationEmailFieldId: string | null;
+  confirmationNameFieldId: string | null;
   teamMinMembers: number;
   teamMaxMembers: number;
   bannerFileId: string | null;
@@ -140,3 +177,21 @@ export const RESERVED_SLUGS = new Set([
   "resources",
   "_next",
 ]);
+
+export function fieldTypeSupportsPlaceholder(type: FieldType) {
+  return REGISTRATION_FIELD_PLACEHOLDER_TYPES.includes(
+    type as (typeof REGISTRATION_FIELD_PLACEHOLDER_TYPES)[number],
+  );
+}
+
+export function fieldTypeSupportsUnique(type: FieldType) {
+  return REGISTRATION_FIELD_UNIQUE_TYPES.includes(
+    type as (typeof REGISTRATION_FIELD_UNIQUE_TYPES)[number],
+  );
+}
+
+export function fieldTypeSupportsCaseSensitiveUnique(type: FieldType) {
+  return REGISTRATION_FIELD_CASE_SENSITIVE_UNIQUE_TYPES.includes(
+    type as (typeof REGISTRATION_FIELD_CASE_SENSITIVE_UNIQUE_TYPES)[number],
+  );
+}

@@ -10,6 +10,9 @@ import {
   getFormAvailability,
   getRegistrationFormBySlug,
   isRegistrationsConfigured,
+  releaseUniqueValueReservations,
+  reserveUniqueFieldValues,
+  UniqueFieldConflictError,
   validateFieldValue,
 } from "@/lib/registrations";
 import type { SubmissionAnswerValue } from "@/lib/registration-types";
@@ -83,6 +86,11 @@ export async function submitRegistrationAction(
   const submissionFields = form.fields.filter((f) => f.scope === "submission" && f.type !== "page_break");
   const memberFields = form.fields.filter((f) => f.scope === "member" && f.type !== "page_break");
   const answers: Record<string, SubmissionAnswerValue> = {};
+  const uniqueValidationEntries: Array<{
+    field: (typeof submissionFields)[number];
+    value: SubmissionAnswerValue;
+    errorKey: string;
+  }> = [];
 
   for (const field of submissionFields) {
     const name = `submission__${field.key}`;
@@ -91,6 +99,9 @@ export async function submitRegistrationAction(
     const error = validateFieldValue(field, value);
     if (error) fieldErrors[name] = error;
     answers[field.key] = value;
+    if (!error && field.isUnique) {
+      uniqueValidationEntries.push({ field, value, errorKey: name });
+    }
   }
 
   const memberAnswers: Array<Record<string, SubmissionAnswerValue>> = [];
@@ -115,6 +126,9 @@ export async function submitRegistrationAction(
           const error = validateFieldValue(field, value);
           if (error) fieldErrors[name] = `Member ${i + 1}: ${error}`;
           memberAnswer[field.key] = value;
+          if (!error && field.isUnique) {
+            uniqueValidationEntries.push({ field, value, errorKey: name });
+          }
         }
         memberAnswers.push(memberAnswer);
       }
@@ -131,6 +145,34 @@ export async function submitRegistrationAction(
   }
 
   const primaryTeam  = null;
+  let reservedUniqueValueIds: string[] = [];
+
+  try {
+    reservedUniqueValueIds = await reserveUniqueFieldValues({
+      formId: form.id,
+      entries: uniqueValidationEntries,
+    });
+  } catch (error) {
+    if (error instanceof UniqueFieldConflictError) {
+      return buildState(
+        "error",
+        "Please fix the highlighted fields and try again.",
+        error.fieldErrors,
+        fieldsRecord,
+      );
+    }
+
+    if (error instanceof AppwriteConfigError) {
+      return buildState("error", error.message, empty, fieldsRecord);
+    }
+
+    return buildState(
+      "error",
+      "Unable to verify unique field values right now. Please try again.",
+      empty,
+      fieldsRecord,
+    );
+  }
 
   // Upload any captured Files to Appwrite Storage and replace with file IDs.
   try {
@@ -157,6 +199,7 @@ export async function submitRegistrationAction(
 
     await Promise.all(uploadPromises);
   } catch (error) {
+    await releaseUniqueValueReservations(reservedUniqueValueIds);
     console.error("File upload failed", error);
     return buildState("error", "Failed to upload one or more files. Please try again.", empty, fieldsRecord);
   }
@@ -170,6 +213,7 @@ export async function submitRegistrationAction(
     });
   } catch (error) {
     if (error instanceof AppwriteException) {
+      await releaseUniqueValueReservations(reservedUniqueValueIds);
       if (error.code === 404)
         return buildState(
           "error",
@@ -186,6 +230,7 @@ export async function submitRegistrationAction(
         );
       return buildState("error", error.message || "Unable to submit right now. Try again.", empty, fieldsRecord);
     }
+    await releaseUniqueValueReservations(reservedUniqueValueIds);
     if (error instanceof AppwriteConfigError)
       return buildState("error", error.message, empty, fieldsRecord);
     return buildState("error", "Unable to submit right now. Please try again.", empty, fieldsRecord);

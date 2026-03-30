@@ -23,6 +23,7 @@ const DB_ID      = env.APPWRITE_DB_ID;
 const FORMS_COL  = env.APPWRITE_COLLECTION_REGISTRATION_FORMS   || "registration_forms";
 const FIELDS_COL = env.APPWRITE_COLLECTION_REGISTRATION_FIELDS  || "registration_fields";
 const SUBS_COL   = env.APPWRITE_COLLECTION_REGISTRATION_SUBMISSIONS || "registration_submissions";
+const UNIQUE_VALUES_COL = env.APPWRITE_COLLECTION_REGISTRATION_UNIQUE_VALUES || "registration_unique_values";
 const BUCKET_ID  = env.APPWRITE_BUCKET_FORM_BANNERS             || "form_banners";
 const FILES_BUCKET_ID = env.APPWRITE_BUCKET_REGISTRATION_FILES  || "registration_files";
 
@@ -116,6 +117,10 @@ const formAttrs = [
   { t:"str",  key:"openAt",         size:64                },
   { t:"str",  key:"closeAt",        size:64                },
   { t:"str",  key:"successMessage", size:4096              },
+  { t:"bool", key:"confirmationEmailEnabled",               def:false },
+  { t:"str",  key:"confirmationEmailTemplate", size:8192               },
+  { t:"str",  key:"confirmationEmailFieldId", size:255                 },
+  { t:"str",  key:"confirmationNameFieldId",  size:255                 },
   { t:"int",  key:"teamMinMembers", min:1, max:50, def:1  },
   { t:"int",  key:"teamMaxMembers", min:1, max:50, def:1  },
   { t:"str",  key:"bannerFileId",   size:255               },
@@ -137,6 +142,10 @@ const fieldAttrs = [
   { t:"bool", key:"required",                  def:false },
   { t:"int",  key:"sortOrder",      min:0, max:2147483647, def:0 },
   { t:"str",  key:"optionsJson",    size:8192              },
+  { t:"str",  key:"placeholder",    size:512               },
+  { t:"str",  key:"helpText",       size:2048              },
+  { t:"bool", key:"isUnique",                  def:false },
+  { t:"bool", key:"uniqueCaseSensitive",       def:false },
 ];
 await createAttrs(FIELDS_COL, fieldAttrs);
 await waitAvailable(FIELDS_COL, fieldAttrs.map(a => a.key));
@@ -156,11 +165,27 @@ await createAttrs(SUBS_COL, subAttrs);
 await waitAvailable(SUBS_COL, subAttrs.map(a => a.key));
 await ensureIndex(SUBS_COL, "by_form", "key", ["formId"]);
 
-// 4. form_banners bucket
+// 4. registration_unique_values
+console.log("\n📋  registration_unique_values");
+await ensureCollection(UNIQUE_VALUES_COL, "Registration Unique Values");
+const uniqueValueAttrs = [
+  { t:"str", key:"formId",       size:255, req:true },
+  { t:"str", key:"fieldId",      size:255, req:true },
+  { t:"str", key:"valueHash",    size:128, req:true },
+  { t:"str", key:"valuePreview", size:255           },
+  { t:"str", key:"submissionId", size:255           },
+];
+await createAttrs(UNIQUE_VALUES_COL, uniqueValueAttrs);
+await waitAvailable(UNIQUE_VALUES_COL, uniqueValueAttrs.map(a => a.key));
+await ensureIndex(UNIQUE_VALUES_COL, "by_form", "key", ["formId"]);
+await ensureIndex(UNIQUE_VALUES_COL, "by_field", "key", ["fieldId"]);
+await ensureIndex(UNIQUE_VALUES_COL, "unique_field_value", "unique", ["fieldId", "valueHash"]);
+
+// 5. form_banners bucket
 console.log("\n🗂️   form_banners bucket");
 await ensureBucket(BUCKET_ID, "Form Banners");
 
-// 5. registration_files bucket
+// 6. registration_files bucket
 console.log("\n🗂️   registration_files bucket");
 try {
   await storage.getBucket(FILES_BUCKET_ID);

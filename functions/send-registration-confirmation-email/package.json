@@ -1,0 +1,9 @@
+{
+  "name": "send-registration-confirmation-email",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "node-appwrite": "^23.0.0",
+    "nodemailer": "^7.0.3"
+  }
+}

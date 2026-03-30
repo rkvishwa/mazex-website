@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "appwrite:functions:prepare-env": "node scripts/prepare-appwrite-function-env.mjs",
+    "appwrite:functions:push": "npm run appwrite:functions:prepare-env && appwrite push functions --with-variables",
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",

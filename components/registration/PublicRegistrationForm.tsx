@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { useFormStatus } from "react-dom";
+import { useFormStatus, createPortal } from "react-dom";
 import Link from "next/link";
 import type {
   FieldDefinition,
@@ -51,6 +51,11 @@ function FieldHint({ error }: { error?: string }) {
   );
 }
 
+function FieldDescription({ helpText }: { helpText?: string | null }) {
+  if (!helpText) return null;
+  return <p className="mb-3 text-sm leading-6 text-slate-400">{helpText}</p>;
+}
+
 import { Check, ChevronDown, UploadCloud, File, AlertCircle } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -71,12 +76,15 @@ function ChoiceField({
     return (
       <div className="relative">
         <select 
+          key={typeof defaultValue === "string" ? defaultValue : "select"}
           name={name} 
           id={name} 
           defaultValue={typeof defaultValue === "string" ? defaultValue : ""}
           className={`${fieldInputClass(Boolean(error))} appearance-none pr-10`}
         >
-          <option value="" className="bg-slate-900 text-slate-400">Select an option...</option>
+          <option value="" className="bg-slate-900 text-slate-400">
+            {field.placeholder?.trim() || "Select an option..."}
+          </option>
           {options.map((o) => (
             <option key={o.value} value={o.value} className="bg-slate-900 text-slate-100">
               {o.label}
@@ -252,6 +260,7 @@ function RenderField({
     return (
       <div>
         {label}
+        <FieldDescription helpText={field.helpText} />
         <ChoiceField field={field} name={name} options={field.options} error={error} defaultValue={defaultValue} />
       </div>
     );
@@ -261,11 +270,13 @@ function RenderField({
     return (
       <div>
         {label}
+        <FieldDescription helpText={field.helpText} />
         <textarea
           id={name}
           name={name}
           rows={4}
           defaultValue={typeof defaultValue === "string" ? defaultValue : ""}
+          placeholder={field.placeholder ?? undefined}
           className={`${fieldInputClass(Boolean(error))} min-h-[100px] resize-y scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20`}
         />
         <FieldHint error={error} />
@@ -275,18 +286,30 @@ function RenderField({
 
   if (field.type === "file") {
     return (
-      <ClientFileField name={name} field={field} error={error} label={label} />
+      <ClientFileField
+        name={name}
+        field={field}
+        error={error}
+        label={
+          <>
+            {label}
+            <FieldDescription helpText={field.helpText} />
+          </>
+        }
+      />
     );
   }
 
   return (
     <div>
       {label}
+      <FieldDescription helpText={field.helpText} />
       <input
         id={name}
         name={name}
         type={field.type}
         defaultValue={typeof defaultValue === "string" ? defaultValue : ""}
+        placeholder={field.placeholder ?? undefined}
         className={fieldInputClass(Boolean(error))}
       />
       <FieldHint error={error} />
@@ -307,6 +330,11 @@ export default function PublicRegistrationForm({
   const [memberCount, setMemberCount] = useState(form.teamMinMembers);
   const [currentPage, setCurrentPage] = useState(0);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const formAction = async (formData: FormData) => {
     const result = await submitRegistrationAction(state, formData);
@@ -355,6 +383,14 @@ export default function PublicRegistrationForm({
       setCurrentPage(errorPage);
     }
   }, [state, pages, memberFields, totalPages]);
+
+  useEffect(() => {
+    if (state.status === "error" && state.message) {
+      setValidationError(state.message);
+      const timer = setTimeout(() => setValidationError(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [state.toastKey, state.status, state.message]);
 
   const handleNext = () => {
     const formEl = document.getElementById("registration-form") as HTMLFormElement;
@@ -448,19 +484,22 @@ export default function PublicRegistrationForm({
 
   return (
     <div className="p-6 sm:p-10 lg:p-12 relative">
-      <AnimatePresence>
-        {validationError && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, x: "-50%" }}
-            animate={{ opacity: 1, y: 0, x: "-50%" }}
-            exit={{ opacity: 0, y: 20, x: "-50%" }}
-            className="fixed bottom-6 left-1/2 z-[9999] flex w-[90%] max-w-sm items-center gap-3 rounded-2xl border border-rose-500/30 bg-[#1e0f15]/80 p-4 px-5 text-sm font-medium text-rose-200 shadow-2xl shadow-rose-900/20 backdrop-blur-xl sm:bottom-10"
-          >
-            <AlertCircle className="h-5 w-5 shrink-0 text-rose-400" />
-            <p className="flex-1 leading-snug">{validationError}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {isMounted && document.body && createPortal(
+        <AnimatePresence>
+          {validationError && (
+            <motion.div
+              initial={{ opacity: 0, y: 20, x: "-50%" }}
+              animate={{ opacity: 1, y: 0, x: "-50%" }}
+              exit={{ opacity: 0, y: 20, x: "-50%" }}
+              className="fixed bottom-6 left-1/2 z-[99999] flex w-[90%] max-w-sm items-center gap-3 rounded-2xl border border-rose-500/30 bg-[#1e0f15]/80 p-4 px-5 text-sm font-medium text-rose-200 shadow-xl shadow-rose-900/20 backdrop-blur-xl sm:bottom-10"
+            >
+              <AlertCircle className="h-5 w-5 shrink-0 text-rose-400" />
+              <p className="flex-1 leading-snug">{validationError}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       <div id="registration-form-top" className="pointer-events-none h-0 w-0" />
 
@@ -481,12 +520,6 @@ export default function PublicRegistrationForm({
 
       <form action={formAction} className="space-y-10" noValidate id="registration-form">
         <input type="hidden" name="slug" value={slug} />
-
-        {state.status === "error" && state.message && (
-          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-5 py-4 text-sm text-rose-200 backdrop-blur-sm">
-            {state.message}
-          </div>
-        )}
 
         {isFormEmpty ? (
           <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-6 py-8 text-center backdrop-blur-sm">

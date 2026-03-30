@@ -30,6 +30,9 @@ import type {
   RegistrationFormStatus,
 } from "@/lib/registration-types";
 import {
+  fieldTypeSupportsCaseSensitiveUnique,
+  fieldTypeSupportsPlaceholder,
+  fieldTypeSupportsUnique,
   MAX_REGISTRATION_FORMS,
   REGISTRATION_FIELD_SCOPES,
   REGISTRATION_FIELD_TYPES,
@@ -100,6 +103,19 @@ function readOptionalString(formData: FormData, key: string) {
   return value ? value : null;
 }
 
+function readUnknownString(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function readUnknownOptionalString(value: unknown) {
+  const normalized = readUnknownString(value);
+  return normalized || null;
+}
+
+function readUnknownBoolean(value: unknown) {
+  return value === true || value === "true" || value === "on";
+}
+
 function parseInteger(value: string, fallback: number) {
   const parsed = Number(value);
   return Number.isInteger(parsed) ? parsed : fallback;
@@ -112,11 +128,166 @@ function parseOptionalNumber(formData: FormData, key: string) {
   return Number.isFinite(value) ? value : Number.NaN;
 }
 
+function normalizeFieldOptionsInput(raw: unknown): FieldOption[] {
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .map((option) => {
+      if (
+        typeof option === "object" &&
+        option !== null &&
+        typeof (option as { label?: unknown }).label === "string" &&
+        typeof (option as { value?: unknown }).value === "string"
+      ) {
+        const label = (option as { label: string }).label.trim();
+        const value = (option as { value: string }).value.trim();
+        if (label && value) return { label, value };
+      }
+
+      return null;
+    })
+    .filter((option): option is FieldOption => option !== null);
+}
+
+function parseFieldSortOrder(value: unknown) {
+  if (typeof value === "number" && Number.isInteger(value)) return value;
+  if (typeof value === "string") return parseInteger(value.trim(), Number.NaN);
+  return Number.NaN;
+}
+
+function normalizeFieldDefinitionInput(input: {
+  formId: unknown;
+  scope: unknown;
+  type: unknown;
+  key: unknown;
+  label: unknown;
+  sortOrder: unknown;
+  options: unknown;
+  required: unknown;
+  placeholder?: unknown;
+  helpText?: unknown;
+  isUnique?: unknown;
+  uniqueCaseSensitive?: unknown;
+}) {
+  const formId = readUnknownString(input.formId);
+  const scopeValue = readUnknownString(input.scope);
+  const typeValue = readUnknownString(input.type);
+  const rawKey = readUnknownString(input.key).toLowerCase();
+  const label = readUnknownString(input.label);
+
+  if (!formId) throw new Error("Unable to determine which form to update.");
+  if (!isFieldScope(scopeValue)) throw new Error("Choose a valid field scope.");
+  if (!isFieldType(typeValue)) throw new Error("Choose a valid field type.");
+  if (!label) throw new Error("Enter a field label.");
+
+  const key = rawKey.replace(/[^a-z0-9_]+/g, "_").replace(/^_+|_+$/g, "");
+  if (!/^[a-z][a-z0-9_]*$/.test(key)) {
+    throw new Error(
+      "Field key must start with a letter and use only lowercase letters, numbers, or underscores.",
+    );
+  }
+
+  const sortOrder = parseFieldSortOrder(input.sortOrder);
+  if (!Number.isInteger(sortOrder) || sortOrder < 0) {
+    throw new Error("Sort order must be a whole number ≥ 0.");
+  }
+
+  const options =
+    typeof input.options === "string"
+      ? parseOptionsFromText(input.options)
+      : normalizeFieldOptionsInput(input.options);
+
+  if (isChoiceField(typeValue) && options.length === 0) {
+    throw new Error("Add at least one option for choice fields.");
+  }
+
+  const requestedUnique = readUnknownBoolean(input.isUnique);
+  if (requestedUnique && !fieldTypeSupportsUnique(typeValue)) {
+    throw new Error("Unique validation is only supported for single-value text, choice, date, time, and number fields.");
+  }
+
+  const required = typeValue === "page_break" ? false : readUnknownBoolean(input.required);
+  const scope = typeValue === "page_break" ? "submission" : scopeValue;
+  const placeholder = fieldTypeSupportsPlaceholder(typeValue)
+    ? readUnknownOptionalString(input.placeholder)
+    : null;
+  const helpText = typeValue === "page_break" ? null : readUnknownOptionalString(input.helpText);
+  const isUnique = typeValue === "page_break" ? false : requestedUnique;
+  const uniqueCaseSensitive =
+    isUnique && fieldTypeSupportsCaseSensitiveUnique(typeValue)
+      ? readUnknownBoolean(input.uniqueCaseSensitive)
+      : false;
+
+  return {
+    formId,
+    scope,
+    key,
+    label,
+    type: typeValue,
+    required,
+    sortOrder,
+    options: isChoiceField(typeValue) ? options : [],
+    placeholder,
+    helpText,
+    isUnique,
+    uniqueCaseSensitive,
+  };
+}
+
 function parseOptionalDateTime(value: string) {
   if (!value) return null;
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return null;
   return parsed.toISOString();
+}
+
+function isConfirmationEmailFieldCandidate(
+  field: Pick<FieldDefinition, "scope" | "type">,
+) {
+  return field.scope === "submission" && field.type === "email";
+}
+
+function isConfirmationNameFieldCandidate(
+  field: Pick<FieldDefinition, "scope" | "type">,
+) {
+  return field.scope === "submission" && field.type === "text";
+}
+
+function validateConfirmationEmailSettings(params: {
+  enabled: boolean;
+  emailFieldId: string | null;
+  nameFieldId: string | null;
+  fields: Array<Pick<FieldDefinition, "id" | "scope" | "type">>;
+}) {
+  if (!params.enabled) {
+    return {
+      confirmationEmailFieldId: null,
+      confirmationNameFieldId: null,
+    };
+  }
+
+  if (!params.emailFieldId) {
+    throw new Error("Choose the submission email field used for confirmation emails.");
+  }
+
+  if (!params.nameFieldId) {
+    throw new Error("Choose the submission short answer field used for the recipient name.");
+  }
+
+  const emailField = params.fields.find((field) => field.id === params.emailFieldId);
+  if (!emailField || !isConfirmationEmailFieldCandidate(emailField)) {
+    throw new Error("Confirmation emails can only use a submission email field.");
+  }
+
+  const nameField = params.fields.find((field) => field.id === params.nameFieldId);
+  if (!nameField || !isConfirmationNameFieldCandidate(nameField)) {
+    throw new Error("Confirmation email names can only use a submission short answer field.");
+  }
+
+  return {
+    confirmationEmailFieldId: emailField.id,
+    confirmationNameFieldId: nameField.id,
+  };
 }
 
 // ─── Slug validation ──────────────────────────────────────────────────────────
@@ -291,6 +462,15 @@ export async function updateRegistrationFormSettingsAction(
         );
     }
 
+    const confirmationEmailEnabled = formData.get("confirmationEmailEnabled") === "on";
+    const confirmationEmailTemplate = readOptionalString(formData, "confirmationEmailTemplate");
+    const confirmationSettings = validateConfirmationEmailSettings({
+      enabled: confirmationEmailEnabled,
+      emailFieldId: readOptionalString(formData, "confirmationEmailFieldId"),
+      nameFieldId: readOptionalString(formData, "confirmationNameFieldId"),
+      fields: form.fields,
+    });
+
     await updateRegistrationFormSettings({
       formId: form.id,
       slug,
@@ -300,6 +480,10 @@ export async function updateRegistrationFormSettingsAction(
       openAt,
       closeAt,
       successMessage: readOptionalString(formData, "successMessage"),
+      confirmationEmailEnabled,
+      confirmationEmailTemplate,
+      confirmationEmailFieldId: confirmationSettings.confirmationEmailFieldId,
+      confirmationNameFieldId: confirmationSettings.confirmationNameFieldId,
       teamMinMembers,
       teamMaxMembers,
     });
@@ -372,45 +556,20 @@ export async function deleteFormBannerAction(
 // ─── Field actions ────────────────────────────────────────────────────────────
 
 function parseFieldDefinitionInput(formData: FormData) {
-  const formId = readString(formData, "formId");
-  const scopeValue = readString(formData, "scope");
-  const typeValue = readString(formData, "type");
-  const rawKey = readString(formData, "key").toLowerCase();
-  const label = readString(formData, "label");
-  const sortOrderValue = readString(formData, "sortOrder");
-  const optionsText = readString(formData, "optionsText");
-  const required = formData.get("required") === "on";
-
-  if (!formId) throw new Error("Unable to determine which form to update.");
-  if (!isFieldScope(scopeValue)) throw new Error("Choose a valid field scope.");
-  if (!isFieldType(typeValue)) throw new Error("Choose a valid field type.");
-
-  const key = rawKey.replace(/[^a-z0-9_]+/g, "_").replace(/^_+|_+$/g, "");
-  if (!/^[a-z][a-z0-9_]*$/.test(key))
-    throw new Error(
-      "Field key must start with a letter and use only lowercase letters, numbers, or underscores.",
-    );
-  if (!label) throw new Error("Enter a field label.");
-
-  const sortOrder = parseInteger(sortOrderValue, Number.NaN);
-  if (!Number.isInteger(sortOrder) || sortOrder < 0)
-    throw new Error("Sort order must be a whole number ≥ 0.");
-
-  const options = parseOptionsFromText(optionsText);
-
-  if (isChoiceField(typeValue) && options.length === 0)
-    throw new Error("Add at least one option for select or radio fields.");
-
-  return {
-    formId,
-    scope: scopeValue,
-    key,
-    label,
-    type: typeValue,
-    required,
-    sortOrder,
-    options,
-  };
+  return normalizeFieldDefinitionInput({
+    formId: formData.get("formId"),
+    scope: formData.get("scope"),
+    type: formData.get("type"),
+    key: formData.get("key"),
+    label: formData.get("label"),
+    sortOrder: formData.get("sortOrder"),
+    options: formData.get("optionsText"),
+    required: formData.get("required"),
+    placeholder: formData.get("placeholder"),
+    helpText: formData.get("helpText"),
+    isUnique: formData.get("isUnique"),
+    uniqueCaseSensitive: formData.get("uniqueCaseSensitive"),
+  });
 }
 
 function ensureUniqueKey(fields: FieldDefinition[], next: FieldDefinition) {
@@ -520,6 +679,10 @@ export async function bulkSaveRegistrationFieldsAction(
     required: boolean;
     sortOrder: number;
     options: FieldOption[];
+    placeholder: string | null;
+    helpText: string | null;
+    isUnique: boolean;
+    uniqueCaseSensitive: boolean;
   }[]
 ): Promise<RegistrationAdminActionState> {
   try {
@@ -529,9 +692,27 @@ export async function bulkSaveRegistrationFieldsAction(
     const form = await getRegistrationFormById(formId);
     if (!form) throw new Error("Form not found.");
 
+    const normalizedFields = fields.map((field) => ({
+      id: field.id,
+      ...normalizeFieldDefinitionInput({
+        formId,
+        scope: field.scope,
+        type: field.type,
+        key: field.key,
+        label: field.label,
+        sortOrder: field.sortOrder,
+        options: field.options,
+        required: field.required,
+        placeholder: field.placeholder,
+        helpText: field.helpText,
+        isUnique: field.isUnique,
+        uniqueCaseSensitive: field.uniqueCaseSensitive,
+      }),
+    }));
+
     // Validate unique keys across all submitted fields
     const keys = new Set<string>();
-    for (const f of fields) {
+    for (const f of normalizedFields) {
       const scopeKey = `${f.scope}:${f.key}`;
       if (keys.has(scopeKey)) {
         throw new Error(`Duplicate key "${f.key}" found in ${f.scope} fields.`);
@@ -539,11 +720,18 @@ export async function bulkSaveRegistrationFieldsAction(
       keys.add(scopeKey);
     }
 
+    validateConfirmationEmailSettings({
+      enabled: form.confirmationEmailEnabled,
+      emailFieldId: form.confirmationEmailFieldId,
+      nameFieldId: form.confirmationNameFieldId,
+      fields: normalizedFields,
+    });
+
     const creates = [];
     const updates = [];
-    const incomingIds = new Set(fields.map(f => f.id));
+    const incomingIds = new Set(normalizedFields.map(f => f.id));
 
-    for (const f of fields) {
+    for (const f of normalizedFields) {
       if (f.id.startsWith("draft-")) {
         creates.push(f);
       } else {

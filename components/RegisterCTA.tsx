@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Countdown from "./Countdown";
 
 export default function RegisterCTA() {
   return (
@@ -29,15 +28,17 @@ export default function RegisterCTA() {
             Ready to Build Your Micromouse?
           </h2>
 
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="mt-10"
-          >
-            <Countdown registrationMode="comingSoon" />
-          </motion.div>
+          <div className="mt-12 flex flex-col items-center justify-center">
+            <span className="inline-flex items-center rounded-full border border-[#303959] bg-[#0B1427]/85 px-6 py-2.5 text-sm font-semibold uppercase tracking-[0.24em] text-[#c9bedb]">
+              Registration Opens
+            </span>
+            
+            <div className="my-8 h-px w-24 bg-gradient-to-r from-transparent via-[#818CF8]/50 to-transparent" />
+            
+            <div className="bg-gradient-to-r from-[#F8FAFC] via-[#CBD5E1] to-[#818CF8] bg-clip-text font-[family-name:var(--font-space-grotesk)] text-2xl font-bold uppercase tracking-[0.3em] text-transparent drop-shadow-[0_0_15px_rgba(129,140,248,0.25)] sm:text-3xl md:text-4xl">
+              Coming Soon
+            </div>
+          </div>
         </motion.div>
       </div>
     </section>

@@ -94,7 +94,7 @@ export default function Countdown({
       ) : (
         <div className="mb-8 flex justify-center">
           <span className="inline-flex rounded-full border border-[#303959] bg-[#0B1427]/85 px-6 py-3 text-sm font-semibold uppercase tracking-[0.24em] text-[#c9bedb]">
-            Competition Day
+            Registration Opens
           </span>
         </div>
       )}

@@ -10,6 +10,7 @@ export default function PastEvents() {
   const [activeSlide, setActiveSlide] = useState(0);
   const [selectedEventIndex, setSelectedEventIndex] = useState<number | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isCarouselHovered, setIsCarouselHovered] = useState(false);
   const mounted = typeof document !== "undefined";
 
   useEffect(() => {
@@ -30,6 +31,15 @@ export default function PastEvents() {
     if (index >= PAST_EVENTS.length) index = 0;
     setActiveSlide(index);
   }, []);
+
+  // Auto-advance carousel every 2s, pause on hover or when modal is open
+  useEffect(() => {
+    if (isCarouselHovered || selectedEventIndex !== null) return;
+    const timer = setInterval(() => {
+      setActiveSlide((prev) => (prev + 1) % PAST_EVENTS.length);
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [isCarouselHovered, selectedEventIndex]);
 
   // Keyboard nav
   useEffect(() => {
@@ -156,7 +166,11 @@ export default function PastEvents() {
           style={{ perspective: "1200px" }}
         >
           {/* Carousel Container */}
-          <div className="relative mx-auto h-[200px] sm:h-[300px] md:h-[380px] lg:h-[450px] max-w-3xl">
+          <div
+            className="relative mx-auto h-[200px] sm:h-[300px] md:h-[380px] lg:h-[450px] max-w-3xl"
+            onMouseEnter={() => setIsCarouselHovered(true)}
+            onMouseLeave={() => setIsCarouselHovered(false)}
+          >
             {PAST_EVENTS.map((event, i) => {
               const style = getSlideStyle(i);
               const isActive = i === activeSlide;
@@ -172,10 +186,9 @@ export default function PastEvents() {
                     zIndex: style.zIndex,
                   }}
                   transition={{
-                    type: "spring",
-                    stiffness: 260,
-                    damping: 30,
-                    mass: 0.8,
+                    type: "tween",
+                    duration: 0.8,
+                    ease: "easeInOut",
                   }}
                   onClick={() => {
                     if (isActive) {

@@ -5,6 +5,11 @@ import { AppwriteException, Databases, Storage, ID, Query, Models } from "node-a
 import { InputFile } from "node-appwrite/file";
 import { unstable_noStore as noStore } from "next/cache";
 import {
+  formatDateDisplay,
+  normalizeDateFilterInput,
+  parseDisplayDateInput,
+} from "@/lib/date-format";
+import {
   AppwriteConfigError,
   createAppwriteAdminClient,
   isAppwriteConfigured,
@@ -97,7 +102,6 @@ const DEFAULT_SUCCESS_MESSAGE =
   "Registration received successfully. We will contact you with the next steps.";
 const PAGE_SIZE_DEFAULT = 20;
 const MAX_ROW_PAGE_SIZE = 100;
-const DISPLAY_TIME_ZONE = "Asia/Colombo";
 const UNIQUE_VALUE_PREVIEW_LIMIT = 255;
 
 // ─── Config helpers ──────────────────────────────────────────────────────────
@@ -111,6 +115,8 @@ function getRegistrationsConfig() {
     process.env.APPWRITE_COLLECTION_REGISTRATION_UNIQUE_VALUES?.trim() ||
     "registration_unique_values";
   const bannersBucketId = process.env.APPWRITE_BUCKET_FORM_BANNERS?.trim();
+  const filesBucketId =
+    process.env.APPWRITE_BUCKET_REGISTRATION_FILES?.trim() || "registration_files";
 
   const missing = [
     !databaseId && "APPWRITE_DB_ID",
@@ -132,6 +138,7 @@ function getRegistrationsConfig() {
     submissionsCollectionId: submissionsCollectionId!,
     uniqueValuesCollectionId,
     bannersBucketId: bannersBucketId ?? "form_banners",
+    filesBucketId,
   };
 }
 
@@ -159,6 +166,16 @@ export class UniqueFieldConflictError extends Error {
     super("One or more fields must be unique.");
     this.name = "UniqueFieldConflictError";
     this.fieldErrors = fieldErrors;
+  }
+}
+
+export class FormSubmissionNotAllowedError extends Error {
+  formId: string | null;
+
+  constructor(message: string, formId: string | null = null) {
+    super(message);
+    this.name = "FormSubmissionNotAllowedError";
+    this.formId = formId;
   }
 }
 
@@ -429,18 +446,6 @@ function sortFields(fields: FieldDefinition[]) {
 
 // ─── Display helpers ─────────────────────────────────────────────────────────
 
-function formatDisplayDate(value: string) {
-  try {
-    return new Intl.DateTimeFormat("en-LK", {
-      dateStyle: "medium",
-      timeStyle: "short",
-      timeZone: DISPLAY_TIME_ZONE,
-    }).format(new Date(value));
-  } catch {
-    return value;
-  }
-}
-
 export function getFormAvailability(form: FormDefinition): FormAvailability {
   const now = new Date();
   const openAt = form.openAt ? new Date(form.openAt) : null;
@@ -450,7 +455,7 @@ export function getFormAvailability(form: FormDefinition): FormAvailability {
     return {
       state: "closed",
       label: "Closed",
-      description: closeAt ? `Closed on ${formatDisplayDate(form.closeAt!)}` : null,
+      description: closeAt ? `Closed on ${formatDateDisplay(form.closeAt!)}` : null,
       isAcceptingSubmissions: false,
     };
   }
@@ -459,7 +464,7 @@ export function getFormAvailability(form: FormDefinition): FormAvailability {
     return {
       state: "upcoming",
       label: "Opens soon",
-      description: `Opens ${formatDisplayDate(form.openAt!)}`,
+      description: `Opens ${formatDateDisplay(form.openAt!)}`,
       isAcceptingSubmissions: false,
     };
   }
@@ -468,7 +473,7 @@ export function getFormAvailability(form: FormDefinition): FormAvailability {
     return {
       state: "upcoming",
       label: "Coming soon",
-      description: closeAt ? `Closes ${formatDisplayDate(form.closeAt!)}` : null,
+      description: closeAt ? `Closes ${formatDateDisplay(form.closeAt!)}` : null,
       isAcceptingSubmissions: false,
     };
   }
@@ -477,7 +482,7 @@ export function getFormAvailability(form: FormDefinition): FormAvailability {
     return {
       state: "closed",
       label: "Closed",
-      description: `Closed on ${formatDisplayDate(form.closeAt!)}`,
+      description: `Closed on ${formatDateDisplay(form.closeAt!)}`,
       isAcceptingSubmissions: false,
     };
   }
@@ -485,7 +490,7 @@ export function getFormAvailability(form: FormDefinition): FormAvailability {
   return {
     state: "open",
     label: "Open now",
-    description: closeAt ? `Closes ${formatDisplayDate(form.closeAt!)}` : null,
+    description: closeAt ? `Closes ${formatDateDisplay(form.closeAt!)}` : null,
     isAcceptingSubmissions: true,
   };
 }
@@ -501,11 +506,30 @@ export function getFormBannerUrl(bannerFileId: string): string {
 
 // ─── Form list ────────────────────────────────────────────────────────────────
 
-export async function listRegistrationForms(): Promise<FormDefinition[]> {
+type ListRegistrationFormsOptions = {
+  skipSiteEventAutoSync?: boolean;
+};
+
+async function syncSiteEventDateTransitionsBeforeRead() {
+  try {
+    const { syncSiteEventDateTransitionsIfNeeded } = await import("@/lib/site-events");
+    await syncSiteEventDateTransitionsIfNeeded();
+  } catch {
+    // Form reads should still work even if the event auto-sync write fails.
+  }
+}
+
+export async function listRegistrationForms(
+  options: ListRegistrationFormsOptions = {},
+): Promise<FormDefinition[]> {
   noStore();
   if (!isAppwriteConfigured() || !isRegistrationsConfigured()) return [];
 
   try {
+    if (!options.skipSiteEventAutoSync) {
+      await syncSiteEventDateTransitionsBeforeRead();
+    }
+
     const { databaseId, formsCollectionId } = getRegistrationsConfig();
     const result = await createDatabasesService().listDocuments<FormDoc>(
       databaseId,
@@ -535,6 +559,8 @@ export async function getRegistrationFormBySlug(
   if (!s || !isAppwriteConfigured() || !isRegistrationsConfigured()) return null;
 
   try {
+    await syncSiteEventDateTransitionsBeforeRead();
+
     const { databaseId, formsCollectionId, fieldsCollectionId } = getRegistrationsConfig();
     const db = createDatabasesService();
 
@@ -575,6 +601,8 @@ export async function getRegistrationFormById(
     return null;
 
   try {
+    await syncSiteEventDateTransitionsBeforeRead();
+
     const { databaseId, formsCollectionId, fieldsCollectionId } = getRegistrationsConfig();
     const db = createDatabasesService();
 
@@ -698,6 +726,54 @@ async function deleteUniqueValueReservationsByFormId(formId: string) {
 
 export async function releaseUniqueValueReservations(documentIds: string[]) {
   await deleteUniqueValueReservationDocuments(documentIds);
+}
+
+export async function attachUniqueValueReservationsToSubmission(
+  documentIds: string[],
+  submissionId: string,
+) {
+  if (documentIds.length === 0 || !submissionId.trim()) return;
+
+  const { databaseId, uniqueValuesCollectionId } = getRegistrationsConfig();
+  const db = createDatabasesService();
+
+  await Promise.all(
+    documentIds.map((documentId) =>
+      db
+        .updateDocument(databaseId, uniqueValuesCollectionId, documentId, {
+          submissionId,
+        })
+        .catch(() => {}),
+    ),
+  );
+}
+
+export async function uploadRegistrationFile(file: File): Promise<string> {
+  const { filesBucketId } = getRegistrationsConfig();
+  const storage = createStorageService();
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const inputFile = InputFile.fromBuffer(buffer, file.name);
+  const uploaded = await storage.createFile(filesBucketId, ID.unique(), inputFile);
+  return uploaded.$id;
+}
+
+export async function deleteRegistrationFiles(fileIds: string[]) {
+  if (fileIds.length === 0) return;
+
+  const { filesBucketId } = getRegistrationsConfig();
+  const storage = createStorageService();
+
+  await Promise.all(
+    fileIds.map(async (fileId) => {
+      try {
+        await storage.deleteFile(filesBucketId, fileId);
+      } catch (error) {
+        if (!(error instanceof AppwriteException) || error.code !== 404) {
+          throw error;
+        }
+      }
+    }),
+  );
 }
 
 export async function deleteRegistrationForm(formId: string) {
@@ -1114,7 +1190,58 @@ export async function reserveUniqueFieldValues(params: {
   return reservedIds;
 }
 
+async function assertFormAcceptingSubmissions(formId: string) {
+  const normalizedFormId = formId.trim();
+  if (!normalizedFormId) {
+    throw new FormSubmissionNotAllowedError(
+      "This registration form is not accepting submissions right now.",
+    );
+  }
+
+  await syncSiteEventDateTransitionsBeforeRead();
+
+  const { databaseId, formsCollectionId } = getRegistrationsConfig();
+  let formDoc: FormDoc;
+
+  try {
+    formDoc = await createDatabasesService().getDocument<FormDoc>(
+      databaseId,
+      formsCollectionId,
+      normalizedFormId,
+    );
+  } catch (error) {
+    if (error instanceof AppwriteException && error.code === 404) {
+      throw new FormSubmissionNotAllowedError(
+        "This registration form was not found.",
+        normalizedFormId,
+      );
+    }
+
+    throw error;
+  }
+
+  const form = mapFormDoc(formDoc);
+  if (!form) {
+    throw new FormSubmissionNotAllowedError(
+      "This registration form is not accepting submissions right now.",
+      normalizedFormId,
+    );
+  }
+
+  const availability = getFormAvailability(form);
+  if (!availability.isAcceptingSubmissions) {
+    throw new FormSubmissionNotAllowedError(
+      availability.description
+        ? `This form is not accepting submissions. ${availability.description}`
+        : "This form is not accepting submissions right now.",
+      form.id,
+    );
+  }
+}
+
 export async function createRegistrationSubmission(payload: SubmissionPayload) {
+  await assertFormAcceptingSubmissions(payload.formId);
+
   const { databaseId, submissionsCollectionId } = getRegistrationsConfig();
   return createDatabasesService().createDocument<SubmissionDoc>(
     databaseId,
@@ -1142,11 +1269,7 @@ function normalizePageSize(value: number | "all" | undefined, fallback: number) 
 }
 
 function normalizeDateFilter(value: string | null | undefined, endOfDay = false) {
-  if (!value?.trim()) return null;
-  const suffix = endOfDay ? "T23:59:59.999+05:30" : "T00:00:00.000+05:30";
-  const parsed = new Date(`${value.trim()}${suffix}`);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed.toISOString();
+  return normalizeDateFilterInput(value, endOfDay);
 }
 
 async function getFormsByIdMap() {
@@ -1455,6 +1578,12 @@ export function coerceFieldValue(
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : value;
   }
+  if (field.type === "date") {
+    const stored = parseDisplayDateInput(value);
+    if (!stored) return value;
+    const [year, month, day] = stored.split("-");
+    return `${year}/${month}/${day}`;
+  }
   return value;
 }
 
@@ -1502,6 +1631,10 @@ export function validateFieldValue(
   }
 
   if (typeof value !== "string") return `${field.label} has an invalid value.`;
+
+  if (field.type === "date" && !parseDisplayDateInput(value)) {
+    return `${field.label} must use the yyyy/mm/dd format.`;
+  }
 
   if (field.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
     return `${field.label} must be a valid email address.`;

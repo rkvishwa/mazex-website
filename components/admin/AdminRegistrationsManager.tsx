@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Reorder } from "framer-motion";
@@ -29,9 +30,11 @@ import {
   MAX_REGISTRATION_FORMS,
   REGISTRATION_FORM_KINDS,
 } from "@/lib/registration-types";
+import FormattedPickerInput from "@/components/FormattedPickerInput";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const IDLE: RegistrationAdminActionState = { status: "idle", message: null, toastKey: 0 };
+const FORM_HOST = "mazex.knurdz.org";
 
 const TYPE_LABELS: Record<FieldType, string> = {
   text: "Short answer", textarea: "Paragraph", email: "Email",
@@ -42,17 +45,19 @@ const TYPE_LABELS: Record<FieldType, string> = {
 
 const ALL_TYPES = Object.keys(TYPE_LABELS).filter(t => t !== "page_break") as FieldType[];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function localDt(v: string | null) {
-  if (!v) return "";
-  const d = new Date(v);
-  if (isNaN(d.getTime())) return "";
-  const yyyy = d.getFullYear();
-  const MM = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${yyyy}-${MM}-${dd}T${hh}:${mm}`;
+function slugifyTitle(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function normalizeSlugInput(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+/, "");
 }
 
 function normalizeFieldDraft(field: FieldDefinition): FieldDefinition {
@@ -111,6 +116,21 @@ function useToast(state: RegistrationAdminActionState) {
   return { visible, dismiss: () => setKey(state.toastKey) };
 }
 
+function CreateFormButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex items-center gap-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus:ring-zinc-300"
+    >
+      {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+      {pending ? "Creating form..." : "Create form"}
+    </button>
+  );
+}
+
 
 // ─── Create Form Panel ────────────────────────────────────────────────────────
 function CreateFormPanel({ formCount, onCancel }: { formCount: number; onCancel: () => void }) {
@@ -118,6 +138,20 @@ function CreateFormPanel({ formCount, onCancel }: { formCount: number; onCancel:
   const toast = useToast(state);
   const [slug, setSlug] = useState("");
   const [title, setTitle] = useState("");
+
+  function handleTitleChange(value: string) {
+    const previousGeneratedSlug = slugifyTitle(title);
+    const nextGeneratedSlug = slugifyTitle(value);
+
+    setTitle(value);
+    setSlug((currentSlug) => {
+      const normalizedCurrentSlug = normalizeSlugInput(currentSlug);
+      if (!normalizedCurrentSlug || normalizedCurrentSlug === previousGeneratedSlug) {
+        return nextGeneratedSlug;
+      }
+      return currentSlug;
+    });
+  }
 
   return (
     <>
@@ -131,7 +165,7 @@ function CreateFormPanel({ formCount, onCancel }: { formCount: number; onCancel:
             <form action={dispatch} className="mt-6 space-y-5">
               <div>
                 <input name="title" type="text" placeholder="Form title" value={title} required
-                  onChange={e => { setTitle(e.target.value); if (!slug) setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")); }}
+                  onChange={e => handleTitleChange(e.target.value)}
                   className="block w-full border-0 border-b-2 border-zinc-200 bg-transparent px-0 py-2 text-xl font-bold text-zinc-900 placeholder-zinc-400 focus:border-zinc-900 focus:ring-0 dark:border-zinc-800 dark:text-zinc-50 dark:placeholder-zinc-600 dark:focus:border-zinc-400" />
               </div>
               <div>
@@ -141,15 +175,15 @@ function CreateFormPanel({ formCount, onCancel }: { formCount: number; onCancel:
               </div>
               <div>
                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                  Slug — <span className="font-normal normal-case tracking-normal">yoursite.com/{slug || "…"}</span>
+                  Slug — <span className="font-normal normal-case tracking-normal">{FORM_HOST}/{slug || "…"}</span>
                 </label>
                 <input name="slug" type="text" value={slug} required
-                  onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+/, ""))}
+                  onChange={e => setSlug(normalizeSlugInput(e.target.value))}
                    className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400" />
               </div>
               {state.status === "error" && <p className="text-sm text-rose-600 dark:text-rose-400">{state.message}</p>}
               <div className="flex gap-3 pt-2">
-                <button type="submit" className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus:ring-zinc-300 transition-colors">Create form</button>
+                <CreateFormButton />
                 <button type="button" onClick={onCancel} className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:focus:ring-zinc-300 transition-colors">Cancel</button>
               </div>
             </form>
@@ -202,6 +236,21 @@ function BannerArea({ form, bannerUrl }: { form: FormDefinition; bannerUrl: stri
         </form>
       )}
     </div>
+  );
+}
+
+function SaveSettingsButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex items-center gap-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus:ring-zinc-300"
+    >
+      {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+      {pending ? "Saving settings..." : "Save settings"}
+    </button>
   );
 }
 
@@ -284,7 +333,7 @@ function SettingsPanel({ form }: { form: FormWithFields }) {
               </div>
               <div className="sm:col-span-2">
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                  Slug — <span className="font-normal normal-case">yoursite.com/{slug || "…"}</span>
+                  Slug — <span className="font-normal normal-case">{FORM_HOST}/{slug || "…"}</span>
                   <a href={`/${slug}`} target="_blank" className="ml-2 inline-flex text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"><ExternalLink className="h-3 w-3" /></a>
                 </label>
                 <input name="slug" value={slug} onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+/, ""))}
@@ -306,25 +355,35 @@ function SettingsPanel({ form }: { form: FormWithFields }) {
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Opens at</label>
-                <input type="datetime-local" defaultValue={localDt(form.openAt)}
-                  onChange={e => {
-                    const hidden = e.target.nextElementSibling as HTMLInputElement;
-                    hidden.value = e.target.value ? new Date(e.target.value).toISOString() : "";
-                  }}
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Open date</label>
+                <FormattedPickerInput
+                  key={`openAt:${form.openAt ?? ""}`}
+                  name="openAt"
+                  mode="date"
+                  defaultValue={form.openAt}
+                  placeholder="yyyy/mm/dd"
+                  inputMode="numeric"
+                  ariaLabel={`Select the open date for ${form.title}`}
                   className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400" />
-                <input type="hidden" name="openAt" defaultValue={form.openAt || ""} />
               </div>
               <div>
-                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Closes at</label>
-                <input type="datetime-local" defaultValue={localDt(form.closeAt)}
-                  onChange={e => {
-                    const hidden = e.target.nextElementSibling as HTMLInputElement;
-                    hidden.value = e.target.value ? new Date(e.target.value).toISOString() : "";
-                  }}
+                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Close date</label>
+                <FormattedPickerInput
+                  key={`closeAt:${form.closeAt ?? ""}`}
+                  name="closeAt"
+                  mode="date"
+                  defaultValue={form.closeAt}
+                  placeholder="yyyy/mm/dd"
+                  inputMode="numeric"
+                  ariaLabel={`Select the close date for ${form.title}`}
                   className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400" />
-                <input type="hidden" name="closeAt" defaultValue={form.closeAt || ""} />
               </div>
+              {form.kind === "competition" || form.kind === "workshop" ? (
+                <p className="sm:col-span-2 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                  If this form is linked in Events, these opening and closing dates
+                  stay synced with its event card.
+                </p>
+              ) : null}
               <div className="sm:col-span-2">
                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Description</label>
                 <input name="description" type="text" defaultValue={form.description ?? ""}
@@ -434,14 +493,20 @@ function SettingsPanel({ form }: { form: FormWithFields }) {
             {settingsState.status === "error" && <p className="mt-3 text-sm text-rose-600 dark:text-rose-400">{settingsState.message}</p>}
 
              <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-zinc-200 dark:border-zinc-800 pt-4">
-               <button type="submit" className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus:ring-zinc-300 transition-colors">Save settings</button>
+               <SaveSettingsButton />
               {confirmDelete ? (
-                <form action={deleteDispatch} className="flex items-center gap-2">
-                  <input type="hidden" name="formId" value={form.id} />
+                <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-rose-600 dark:text-rose-400 ml-2">Delete data?</span>
-                  <button type="submit" className="rounded-md bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-500 transition-colors">Yes, delete</button>
+                  <button
+                    type="submit"
+                    formAction={deleteDispatch}
+                    formNoValidate
+                    className="rounded-md bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-500 transition-colors"
+                  >
+                    Yes, delete
+                  </button>
                   <button type="button" onClick={() => setConfirmDelete(false)} className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900 transition-colors">Cancel</button>
-                </form>
+                </div>
               ) : (
                 <button type="button" onClick={() => setConfirmDelete(true)} className="flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10 transition-colors">
                   <Trash2 className="h-4 w-4" /> Delete form

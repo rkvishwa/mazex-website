@@ -2,7 +2,7 @@
 // scripts/setup-appwrite.mjs
 // Run: node scripts/setup-appwrite.mjs
 
-import { Client, Databases, Storage, Query } from "node-appwrite";
+import { Client, Databases, Storage } from "node-appwrite";
 import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -26,6 +26,7 @@ const SUBS_COL   = env.APPWRITE_COLLECTION_REGISTRATION_SUBMISSIONS || "registra
 const UNIQUE_VALUES_COL = env.APPWRITE_COLLECTION_REGISTRATION_UNIQUE_VALUES || "registration_unique_values";
 const BUCKET_ID  = env.APPWRITE_BUCKET_FORM_BANNERS             || "form_banners";
 const FILES_BUCKET_ID = env.APPWRITE_BUCKET_REGISTRATION_FILES  || "registration_files";
+const REGISTRATION_FILE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "pdf", "doc", "docx"];
 
 if (!ENDPOINT || !PROJECT_ID || !API_KEY || !DB_ID) {
   console.error("❌  Missing required Appwrite env vars"); process.exit(1);
@@ -193,7 +194,18 @@ try {
 } catch(e) {
   if (e?.code !== 404) throw e;
   // Permissions: [] (empty) means only the server (which uses API key) can read/list.
-  await storage.createBucket(FILES_BUCKET_ID, "Registration Files", [], false, true, 10*1024*1024, [], "gzip", true, true);
+  await storage.createBucket(
+    FILES_BUCKET_ID,
+    "Registration Files",
+    [],
+    false,
+    true,
+    10*1024*1024,
+    REGISTRATION_FILE_EXTENSIONS,
+    "gzip",
+    true,
+    true,
+  );
   console.log(`  + created bucket Registration Files`);
 }
 

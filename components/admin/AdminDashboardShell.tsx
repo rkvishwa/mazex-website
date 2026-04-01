@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   BookOpenText,
+  CalendarDays,
   ClipboardList,
   Handshake,
   LayoutTemplate,
@@ -26,6 +27,7 @@ type AdminDashboardShellProps = {
 const navigationItems = [
   { href: "/admin", label: "Analytics", icon: BarChart3 },
   { href: "/admin/resources", label: "Resources", icon: BookOpenText },
+  { href: "/admin/events", label: "Events", icon: CalendarDays },
   { href: "/admin/form-builder", label: "Form Builder", icon: LayoutTemplate },
   { href: "/admin/registrations", label: "Registrations", icon: ClipboardList },
   { href: "/admin/sponsors", label: "Sponsors", icon: Handshake },

@@ -60,7 +60,11 @@ const NAV_THEMES: Record<
   },
 };
 
-export default function Navbar() {
+export default function Navbar({
+  registerHref = getHomeSectionHref("#register"),
+}: {
+  registerHref?: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [navTheme, setNavTheme] = useState<NavTheme>("violet");
   const [activeHref, setActiveHref] = useState("#hero");
@@ -166,7 +170,7 @@ export default function Navbar() {
                   ))}
                 </div>
                 <a
-                  href={getHomeSectionHref("#register")}
+                  href={registerHref}
                   className="theme-button theme-button-register rounded-full px-6 py-2.5 text-sm font-medium"
                 >
                   Register Now
@@ -224,7 +228,7 @@ export default function Navbar() {
                   </a>
                 ))}
                 <a
-                  href={getHomeSectionHref("#register")}
+                  href={registerHref}
                   onClick={() => setIsOpen(false)}
                   className="theme-button theme-button-register mt-4 block rounded-full px-3.5 py-2 text-center font-medium"
                 >

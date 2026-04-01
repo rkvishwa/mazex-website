@@ -28,6 +28,8 @@ const FIELDS_COL = env.APPWRITE_COLLECTION_REGISTRATION_FIELDS  || "registration
 const SUBS_COL   = env.APPWRITE_COLLECTION_REGISTRATION_SUBMISSIONS || "registration_submissions";
 const UNIQUE_VALUES_COL = env.APPWRITE_COLLECTION_REGISTRATION_UNIQUE_VALUES || "registration_unique_values";
 const BUCKET_ID  = env.APPWRITE_BUCKET_FORM_BANNERS || "form_banners";
+const FILES_BUCKET_ID = env.APPWRITE_BUCKET_REGISTRATION_FILES || "registration_files";
+const REGISTRATION_FILE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "pdf", "doc", "docx"];
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -99,6 +101,28 @@ async function ensureBucket(id, name) {
   }
 }
 
+async function ensureRegistrationFilesBucket(id) {
+  try {
+    await storage.getBucket(id);
+    console.log(`  ✓ bucket exists: Registration Files`);
+  } catch(e) {
+    if (e?.code !== 404) throw e;
+    await storage.createBucket(
+      id,
+      "Registration Files",
+      [],
+      false,
+      true,
+      10 * 1024 * 1024,
+      REGISTRATION_FILE_EXTENSIONS,
+      "gzip",
+      true,
+      true,
+    );
+    console.log(`  + created bucket: Registration Files`);
+  }
+}
+
 console.log("\n🔧  Finishing Appwrite setup\n");
 
 // Add missing field metadata attributes and indexes
@@ -128,5 +152,6 @@ await ensureIndex(UNIQUE_VALUES_COL, "unique_field_value", "unique", ["fieldId",
 
 // Create form_banners bucket
 await ensureBucket(BUCKET_ID, "Form Banners");
+await ensureRegistrationFilesBucket(FILES_BUCKET_ID);
 
 console.log("\n✅  Done — Appwrite schema is fully ready.\n");

@@ -19,7 +19,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "MazeX 1.0 | Micromouse Robotics Competition — University of Moratuwa",
   description:
-    "MazeX 1.0 is an intra-university Micromouse Robotics Competition organized by IEEE RAS and WIE at the University of Moratuwa. Register by May 5, 2026. Competition Day: June 20, 2026.",
+    "MazeX 1.0 is an intra-university Micromouse Robotics Competition organized by IEEE RAS and WIE at the University of Moratuwa. Register by 05/05/2026. Competition Day: 20/06/2026.",
   keywords:
     "Micromouse, Robotics, IEEE, University of Moratuwa, RAS, WIE, MazeX, Competition, Sri Lanka",
 };

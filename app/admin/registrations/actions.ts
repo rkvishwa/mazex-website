@@ -2,8 +2,16 @@
 
 import { AppwriteException } from "node-appwrite";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { getCurrentAdmin } from "@/lib/admin-auth";
 import { AppwriteConfigError } from "@/lib/appwrite";
+import { parseDisplayDateBoundaryInput } from "@/lib/date-format";
+import {
+  getAutoManagedSiteEventEnabled,
+  getSiteEventDatesFromFormWindow,
+  getSiteEventConfigs,
+  upsertSiteEventConfig,
+} from "@/lib/site-events";
 import {
   createRegistrationField,
   createRegistrationForm,
@@ -29,6 +37,12 @@ import type {
   RegistrationFormKind,
   RegistrationFormStatus,
 } from "@/lib/registration-types";
+import {
+  COMPETITION_SITE_EVENT,
+  type CompetitionEventConfig,
+  type WorkshopEventConfig,
+  WORKSHOP_SITE_EVENTS,
+} from "@/lib/site-event-types";
 import {
   fieldTypeSupportsCaseSensitiveUnique,
   fieldTypeSupportsPlaceholder,
@@ -234,11 +248,9 @@ function normalizeFieldDefinitionInput(input: {
   };
 }
 
-function parseOptionalDateTime(value: string) {
+function parseOptionalDate(value: string, endOfDay = false) {
   if (!value) return null;
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed.toISOString();
+  return parseDisplayDateBoundaryInput(value, endOfDay);
 }
 
 function isConfirmationEmailFieldCandidate(
@@ -314,9 +326,92 @@ async function requireAdmin() {
 function revalidateAll(slug?: string) {
   revalidatePath("/");
   revalidatePath("/admin");
+  revalidatePath("/admin/events");
   revalidatePath("/admin/form-builder");
   revalidatePath("/admin/registrations");
   if (slug) revalidatePath(`/${slug}`);
+}
+
+type SiteEventConfigs = Awaited<ReturnType<typeof getSiteEventConfigs>>;
+
+type LinkedSiteEvent =
+  | {
+      key: typeof COMPETITION_SITE_EVENT.key;
+      title: string;
+      kind: "competition";
+      config: CompetitionEventConfig;
+    }
+  | {
+      key: (typeof WORKSHOP_SITE_EVENTS)[number]["key"];
+      title: string;
+      kind: "workshop";
+      config: WorkshopEventConfig;
+    };
+
+function findLinkedSiteEvent(
+  configs: SiteEventConfigs,
+  formId: string,
+): LinkedSiteEvent | null {
+  const competitionConfig = configs[COMPETITION_SITE_EVENT.key] as CompetitionEventConfig;
+  if (competitionConfig.formId === formId) {
+    return {
+      key: COMPETITION_SITE_EVENT.key,
+      title: COMPETITION_SITE_EVENT.title,
+      kind: "competition",
+      config: competitionConfig,
+    };
+  }
+
+  for (const event of WORKSHOP_SITE_EVENTS) {
+    const config = configs[event.key] as WorkshopEventConfig;
+    if (config.formId === formId) {
+      return {
+        key: event.key,
+        title: event.title,
+        kind: "workshop",
+        config,
+      };
+    }
+  }
+
+  return null;
+}
+
+async function syncLinkedEventFromForm(params: {
+  linkedEvent: LinkedSiteEvent | null;
+  status: RegistrationFormStatus;
+  openAt: string | null;
+  closeAt: string | null;
+}) {
+  const { linkedEvent } = params;
+  if (!linkedEvent) return false;
+
+  const { openDate, closeDate } = getSiteEventDatesFromFormWindow({
+    openAt: params.openAt,
+    closeAt: params.closeAt,
+  });
+  const enabled = getAutoManagedSiteEventEnabled({
+    enabled: params.status === "open",
+    openDate,
+    closeDate,
+  });
+
+  if (
+    linkedEvent.config.enabled === enabled &&
+    linkedEvent.config.openDate === openDate &&
+    linkedEvent.config.closeDate === closeDate
+  ) {
+    return true;
+  }
+
+  await upsertSiteEventConfig(linkedEvent.key, {
+    ...linkedEvent.config,
+    enabled,
+    openDate,
+    closeDate,
+  });
+
+  return true;
 }
 
 // ─── Error handler ────────────────────────────────────────────────────────────
@@ -353,6 +448,8 @@ export async function createRegistrationFormAction(
   _prev: RegistrationAdminActionState = initialState,
   formData: FormData,
 ): Promise<RegistrationAdminActionState> {
+  let redirectTo: string | null = null;
+
   try {
     await requireAdmin();
 
@@ -382,10 +479,16 @@ export async function createRegistrationFormAction(
     });
 
     revalidateAll(slug);
-    return buildState("success", `Form "${title}" created successfully.`);
+    redirectTo = `/admin/form-builder?form=${encodeURIComponent(slug)}`;
   } catch (error) {
     return handleError(error);
   }
+
+  if (!redirectTo) {
+    return buildState("error", "Unable to open the newly created form.");
+  }
+
+  redirect(redirectTo);
 }
 
 // ─── Delete form ──────────────────────────────────────────────────────────────
@@ -401,6 +504,14 @@ export async function deleteRegistrationFormAction(
 
     const form = await getRegistrationFormById(formId);
     if (!form) throw new Error("Form not found.");
+
+    const siteEventConfigs = await getSiteEventConfigs();
+    const linkedEvent = findLinkedSiteEvent(siteEventConfigs, form.id);
+    if (linkedEvent) {
+      throw new Error(
+        `"${form.title}" is linked to ${linkedEvent.title}. Unlink it from Events before deleting this form.`,
+      );
+    }
 
     await deleteRegistrationForm(formId);
     revalidateAll(form.slug);
@@ -425,6 +536,9 @@ export async function updateRegistrationFormSettingsAction(
     const form = await getRegistrationFormById(formId);
     if (!form) throw new Error("Form not found.");
 
+    const siteEventConfigs = await getSiteEventConfigs();
+    const linkedEvent = findLinkedSiteEvent(siteEventConfigs, form.id);
+
     const slug = readString(formData, "slug");
     const slugError = validateSlug(slug);
     if (slugError) throw new Error(slugError);
@@ -435,15 +549,38 @@ export async function updateRegistrationFormSettingsAction(
     const statusValue = readString(formData, "status");
     if (!isStatus(statusValue)) throw new Error("Choose a valid form status.");
 
-    const openAt = parseOptionalDateTime(readString(formData, "openAt"));
-    const closeAt = parseOptionalDateTime(readString(formData, "closeAt"));
+    const openAt = parseOptionalDate(readString(formData, "openAt"));
+    const closeAt = parseOptionalDate(readString(formData, "closeAt"), true);
     const openAtRaw = readString(formData, "openAt");
     const closeAtRaw = readString(formData, "closeAt");
 
-    if (openAtRaw && !openAt) throw new Error("Enter a valid open date and time.");
-    if (closeAtRaw && !closeAt) throw new Error("Enter a valid close date and time.");
+    if (openAtRaw && !openAt)
+      throw new Error("Enter a valid open date in yyyy/mm/dd format.");
+    if (closeAtRaw && !closeAt)
+      throw new Error("Enter a valid close date in yyyy/mm/dd format.");
     if (openAt && closeAt && new Date(openAt) > new Date(closeAt))
       throw new Error("Open date must be before close date.");
+    if (statusValue === "draft" && linkedEvent) {
+      throw new Error(
+        `"${form.title}" is linked to ${linkedEvent.title}. Unlink it from Events before setting it to draft.`,
+      );
+    }
+    const { openDate, closeDate } = getSiteEventDatesFromFormWindow({
+      openAt,
+      closeAt,
+    });
+    const linkedEventEnabled = linkedEvent
+      ? getAutoManagedSiteEventEnabled({
+          enabled: statusValue === "open",
+          openDate,
+          closeDate,
+        })
+      : false;
+    if (linkedEvent && linkedEventEnabled && (!openAt || !closeAt)) {
+      throw new Error(
+        `${linkedEvent.title} needs both an open date and a close date before the linked form can be opened.`,
+      );
+    }
 
     const isCompetition = form.kind === "competition";
     const teamMinMembers = isCompetition
@@ -486,6 +623,13 @@ export async function updateRegistrationFormSettingsAction(
       confirmationNameFieldId: confirmationSettings.confirmationNameFieldId,
       teamMinMembers,
       teamMaxMembers,
+    });
+
+    await syncLinkedEventFromForm({
+      linkedEvent,
+      status: statusValue,
+      openAt,
+      closeAt,
     });
 
     revalidateAll(slug);

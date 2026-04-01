@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import FormattedPickerInput from "@/components/FormattedPickerInput";
+import { formatDateTimeDisplay, formatStoredDateForInput } from "@/lib/date-format";
 import type {
   FormDefinition,
   FormWithFields,
@@ -14,9 +16,12 @@ import FormSelectorDropdown from "@/components/admin/FormSelectorDropdown";
 import SubmissionDrawer from "@/components/admin/SubmissionDrawer";
 import { OptimisticSubmissionDrawer } from "@/components/admin/OptimisticSubmissionDrawer";
 import SubmissionRowInteractive from "@/components/admin/SubmissionRowInteractive";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
-function formatValue(value: unknown) {
+function formatValue(
+  value: unknown,
+  fieldType?: FormWithFields["fields"][number]["type"],
+) {
   if (value === null || value === undefined || value === "") {
     return "—";
   }
@@ -25,19 +30,15 @@ function formatValue(value: unknown) {
     return value ? "Yes" : "No";
   }
 
+  if (fieldType === "date" && typeof value === "string") {
+    return formatStoredDateForInput(value);
+  }
+
   return String(value);
 }
 
 function formatTimestamp(value: string) {
-  try {
-    return new Intl.DateTimeFormat("en-LK", {
-      dateStyle: "medium",
-      timeStyle: "short",
-      timeZone: "Asia/Colombo",
-    }).format(new Date(value));
-  } catch {
-    return value;
-  }
+  return formatDateTimeDisplay(value);
 }
 
 export function buildPageHref({
@@ -87,6 +88,7 @@ export function SubmissionDetailPanel({
   onCloseHref: string;
 }) {
   const labelMap = new Map(form.fields.map((f) => [f.key, f.label] as const));
+  const typeMap = new Map(form.fields.map((f) => [f.key, f.type] as const));
 
   return (
     <div className="w-full bg-white dark:bg-zinc-900">
@@ -130,7 +132,7 @@ export function SubmissionDetailPanel({
             <SummaryItem
               key={key}
               label={labelMap.get(key) ?? key}
-              value={formatValue(value)}
+              value={formatValue(value, typeMap.get(key))}
               vertical
             />
           ))}
@@ -155,7 +157,7 @@ export function SubmissionDetailPanel({
                   <SummaryItem
                     key={`${submission.id}-${index}-${key}`}
                     label={labelMap.get(key) ?? key}
-                    value={formatValue(value)}
+                    value={formatValue(value, typeMap.get(key))}
                     vertical
                   />
                 ))}
@@ -269,7 +271,6 @@ export default function AdminRegistrationSubmissionsPanel({
   searchQuery?: string | null;
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   // Load preferred page size on mount if omitted
   useEffect(() => {
@@ -422,10 +423,14 @@ export default function AdminRegistrationSubmissionsPanel({
               <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
                 From date
               </label>
-              <input
-                type="date"
+              <FormattedPickerInput
+                key={`from:${from ?? ""}`}
                 name="from"
-                defaultValue={from ?? ""}
+                mode="date"
+                defaultValue={from}
+                placeholder="yyyy/mm/dd"
+                inputMode="numeric"
+                ariaLabel={`Select the start date for ${form.title} submissions`}
                 className="block h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
               />
             </div>
@@ -434,10 +439,14 @@ export default function AdminRegistrationSubmissionsPanel({
               <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
                 To date
               </label>
-              <input
-                type="date"
+              <FormattedPickerInput
+                key={`to:${to ?? ""}`}
                 name="to"
-                defaultValue={to ?? ""}
+                mode="date"
+                defaultValue={to}
+                placeholder="yyyy/mm/dd"
+                inputMode="numeric"
+                ariaLabel={`Select the end date for ${form.title} submissions`}
                className="block h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
               />
             </div>

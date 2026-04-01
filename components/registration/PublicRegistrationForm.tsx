@@ -3,6 +3,8 @@
 import { useMemo, useState, useEffect } from "react";
 import { useFormStatus, createPortal } from "react-dom";
 import Link from "next/link";
+import FormattedPickerInput from "@/components/FormattedPickerInput";
+import { parseDisplayDateInput } from "@/lib/date-format";
 import type {
   FieldDefinition,
   FieldOption,
@@ -300,6 +302,29 @@ function RenderField({
     );
   }
 
+  if (field.type === "date") {
+    return (
+      <div>
+        {label}
+        <FieldDescription helpText={field.helpText} />
+        <FormattedPickerInput
+          key={`${name}:${typeof defaultValue === "string" ? defaultValue : ""}`}
+          id={name}
+          name={name}
+          mode="date"
+          defaultValue={typeof defaultValue === "string" ? defaultValue : ""}
+          placeholder="yyyy/mm/dd"
+          inputMode="numeric"
+          required={field.required}
+          pattern="\\d{4}/\\d{2}/\\d{2}"
+          ariaLabel={`Select a date for ${field.label}`}
+          className={fieldInputClass(Boolean(error))}
+        />
+        <FieldHint error={error} />
+      </div>
+    );
+  }
+
   return (
     <div>
       {label}
@@ -418,7 +443,11 @@ export default function PublicRegistrationForm({
           const input = formEl.elements.namedItem(name) as HTMLInputElement | null;
           // In React, controlled inputs or defaultValues are accessible via formEl.elements
           // But to be safe, also check if there's a file attached if it's a file
-          if (!input || !input.value.trim()) hasError = true;
+          if (!input || !input.value.trim()) {
+            hasError = true;
+          } else if (f.type === "date" && !parseDisplayDateInput(input.value.trim())) {
+            hasError = true;
+          }
         }
       }
 
@@ -519,7 +548,22 @@ export default function PublicRegistrationForm({
       )}
 
       <form action={formAction} className="space-y-10" noValidate id="registration-form">
+        <input type="hidden" name="formId" value={form.id} />
         <input type="hidden" name="slug" value={slug} />
+        <div
+          aria-hidden="true"
+          className="absolute left-[-10000px] top-auto h-px w-px overflow-hidden"
+        >
+          <label htmlFor="registration_url">Leave this field empty</label>
+          <input
+            id="registration_url"
+            name="registration_url"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            defaultValue=""
+          />
+        </div>
 
         {isFormEmpty ? (
           <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-6 py-8 text-center backdrop-blur-sm">

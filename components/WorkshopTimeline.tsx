@@ -1,8 +1,8 @@
 "use client";
 
 import { motion, useTransform, useSpring, useMotionValue, useInView } from "framer-motion";
-import { useRef, useState, useEffect, useMemo } from "react";
-import { WORKSHOP_EVENTS } from "@/lib/constants";
+import { useRef, useEffect } from "react";
+import type { ResolvedWorkshopEvent } from "@/lib/site-event-types";
 
 const MicromouseRobot = () => (
   <svg
@@ -25,7 +25,7 @@ const MicromouseRobot = () => (
   </svg>
 );
 
-const WorkshopCardContent = ({ event }: { event: (typeof WORKSHOP_EVENTS)[0] }) => (
+const WorkshopCardContent = ({ event }: { event: ResolvedWorkshopEvent }) => (
   <div className="relative z-30 w-full overflow-hidden rounded-[18px] border border-[#2f2540] bg-[#0e0a14]/95 p-5 shadow-[0_16px_40px_rgba(0,0,0,0.55)] backdrop-blur-[24px] transition-colors duration-300 group hover:border-[#3b3150] sm:p-6">
     <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-[#8A73A6] via-[#6B528F] to-transparent" />
     <div className="absolute top-0 left-0 bottom-0 w-[1.5px] bg-gradient-to-b from-[#8A73A6] via-[#6B528F] to-transparent" />
@@ -45,7 +45,7 @@ const WorkshopCardContent = ({ event }: { event: (typeof WORKSHOP_EVENTS)[0] }) 
         />
       </svg>
       <span className="text-[9px] font-bold tracking-widest text-[#8A73A6] uppercase sm:text-[10px]">
-        {event.date}
+        {event.displayDate}
       </span>
     </div>
 
@@ -63,12 +63,22 @@ const WorkshopCardContent = ({ event }: { event: (typeof WORKSHOP_EVENTS)[0] }) 
     </p>
 
     <div className="mt-5">
-      <a
-        href="#"
-        className="flex w-full items-center justify-center rounded-lg bg-[#F8FAFC] px-5 py-2.5 text-[13px] font-bold text-[#1C1635] shadow-lg transition-all duration-300 hover:scale-[1.02] hover:bg-white hover:shadow-[#F8FAFC]/20"
-      >
-        Register
-      </a>
+      {event.isRegisterEnabled && event.registerHref ? (
+        <a
+          href={event.registerHref}
+          className="flex w-full items-center justify-center rounded-lg bg-[#F8FAFC] px-5 py-2.5 text-[13px] font-bold text-[#1C1635] shadow-lg transition-all duration-300 hover:scale-[1.02] hover:bg-white hover:shadow-[#F8FAFC]/20"
+        >
+          Register
+        </a>
+      ) : (
+        <button
+          type="button"
+          disabled
+          className="flex w-full cursor-not-allowed items-center justify-center rounded-lg border border-[#403357] bg-[#1C1635] px-5 py-2.5 text-[13px] font-bold text-[#8A73A6] opacity-70"
+        >
+          Register
+        </button>
+      )}
     </div>
   </div>
 );
@@ -82,39 +92,22 @@ const WorkshopPinMarker = () => (
   </div>
 );
 
-export default function WorkshopTimeline() {
+export default function WorkshopTimeline({
+  events,
+}: {
+  events: ResolvedWorkshopEvent[];
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const isInView = useInView(containerRef, { once: true, margin: "-10%" });
 
-  // Calculate progress based on actual dates
-  const dateProgress = useMemo(() => {
-    const now = new Date();
-
-    const passedCount = WORKSHOP_EVENTS.filter((event) => {
-      const eventDate = new Date(event.fullDate);
-      return now >= eventDate;
-    }).length;
-
-    // Logic for progress points:
-    // 0 passed -> Dot 1 (12.5%)
-    // 1 passed -> Dot 2 (37.5%)
-    // 2 passed -> Dot 3 (62.5%)
-    // 3 passed -> Dot 4 (87.5%)
-    // 4 passed -> 100%
-    if (passedCount >= WORKSHOP_EVENTS.length) return 1.0;
-    return (passedCount * 2 + 1) / (WORKSHOP_EVENTS.length * 2);
-  }, []);
-
   const targetProgress = useMotionValue(0);
+  const firstDotProgress = events.length > 0 ? 1 / (events.length * 2) : 0;
 
-  // Stay on the first dot (index 0) for now
   useEffect(() => {
     if (isInView) {
-      // (0 * 2 + 1) / (WORKSHOP_EVENTS.length * 2) = 1/8 = 0.125
-      targetProgress.set(0.125);
+      targetProgress.set(firstDotProgress);
     }
-  }, [isInView, targetProgress]);
+  }, [firstDotProgress, isInView, targetProgress]);
 
   const smoothProgress = useSpring(targetProgress, {
     stiffness: 80,
@@ -167,11 +160,11 @@ export default function WorkshopTimeline() {
           </motion.div>
 
           <div className="absolute inset-0 grid grid-cols-4 gap-4 px-4 w-full">
-            {WORKSHOP_EVENTS.map((event, index) => {
+            {events.map((event, index) => {
               const isTop = index % 2 === 0;
 
               return (
-                <div key={event.number} className="relative flex h-full w-full flex-col items-center justify-center">
+                <div key={event.key} className="relative flex h-full w-full flex-col items-center justify-center">
                   <motion.div
                     initial={{ scale: 0, opacity: 0 }}
                     whileInView={{ scale: 1, opacity: 1 }}
@@ -201,12 +194,6 @@ export default function WorkshopTimeline() {
                     className={`absolute z-20 w-[100%] min-w-[280px] max-w-[340px] ${
                       isTop ? "bottom-[calc(50%+65px)]" : "top-[calc(50%+65px)]"
                     }`}
-                    onMouseEnter={() => {
-                      setHoveredIndex(index);
-                    }}
-                    onMouseLeave={() => {
-                      setHoveredIndex(null);
-                    }}
                   >
                     <WorkshopCardContent event={event} />
                   </motion.div>
@@ -237,8 +224,8 @@ export default function WorkshopTimeline() {
           </div>
 
           <div className="relative z-10 flex flex-col gap-12 pt-8 pb-8 sm:gap-16">
-            {WORKSHOP_EVENTS.map((event, index) => (
-              <div key={event.number} className="relative z-10 pr-2 pl-[80px] sm:pl-[100px]">
+            {events.map((event, index) => (
+              <div key={event.key} className="relative z-10 pr-2 pl-[80px] sm:pl-[100px]">
                 <motion.div
                   initial={{ scale: 0, opacity: 0 }}
                   whileInView={{ scale: 1, opacity: 1 }}
@@ -263,12 +250,6 @@ export default function WorkshopTimeline() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: index * 0.1 + 0.3 }}
                   className="relative w-full"
-                  onMouseEnter={() => {
-                    setHoveredIndex(index);
-                  }}
-                  onMouseLeave={() => {
-                    setHoveredIndex(null);
-                  }}
                 >
                   <WorkshopCardContent event={event} />
                 </motion.div>

@@ -1,17 +1,10 @@
 import Link from "next/link";
 import { ClipboardList, ExternalLink, LayoutTemplate } from "lucide-react";
+import { formatDateTimeDisplay } from "@/lib/date-format";
 import { getRegistrationOverview } from "@/lib/registrations";
 
 function formatTimestamp(value: string) {
-  try {
-    return new Intl.DateTimeFormat("en-LK", {
-      dateStyle: "medium",
-      timeStyle: "short",
-      timeZone: "Asia/Colombo",
-    }).format(new Date(value));
-  } catch {
-    return value;
-  }
+  return formatDateTimeDisplay(value);
 }
 
 export default async function AdminRegistrationsOverview() {

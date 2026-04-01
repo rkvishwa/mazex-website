@@ -6,23 +6,19 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootEnvPath = resolve(__dirname, "../.env");
-const functionEnvPath = resolve(
+const confirmationEnvPath = resolve(
   __dirname,
   "../functions/send-registration-confirmation-email/.env",
 );
 
-const REQUIRED_KEYS = [
+const CONFIRMATION_REQUIRED_KEYS = [
   "REGISTRATION_CONFIRMATION_EMAIL_SMTP_HOST",
   "REGISTRATION_CONFIRMATION_EMAIL_SMTP_PORT",
   "REGISTRATION_CONFIRMATION_EMAIL_SMTP_SECURE",
   "REGISTRATION_CONFIRMATION_EMAIL_FROM",
 ];
 
-const OPTIONAL_KEYS = [
-  "APPWRITE_DB_ID",
-  "APPWRITE_COLLECTION_REGISTRATION_FORMS",
-  "APPWRITE_COLLECTION_REGISTRATION_FIELDS",
-  "APPWRITE_COLLECTION_REGISTRATION_SUBMISSIONS",
+const CONFIRMATION_OPTIONAL_KEYS = [
   "REGISTRATION_CONFIRMATION_EMAIL_SMTP_USER",
   "REGISTRATION_CONFIRMATION_EMAIL_SMTP_PASS",
   "REGISTRATION_CONFIRMATION_EMAIL_REPLY_TO",
@@ -60,43 +56,55 @@ function serializeEnvValue(value) {
   return JSON.stringify(value);
 }
 
+function writeFunctionEnv(targetPath, envValues) {
+  mkdirSync(dirname(targetPath), { recursive: true });
+
+  const envFileContents = Object.entries(envValues)
+    .map(([key, value]) => `${key}=${serializeEnvValue(value)}`)
+    .join("\n");
+
+  writeFileSync(targetPath, `${envFileContents}\n`, "utf8");
+  console.log(`Wrote Appwrite function env: ${targetPath}`);
+}
+
 const fileEnv = existsSync(rootEnvPath)
   ? parseEnvFile(readFileSync(rootEnvPath, "utf8"))
   : {};
 const rootEnv = { ...fileEnv, ...process.env };
 
-const missingKeys = REQUIRED_KEYS.filter((key) => !rootEnv[key]?.trim());
-if (missingKeys.length > 0) {
+const missingConfirmationKeys = CONFIRMATION_REQUIRED_KEYS.filter(
+  (key) => !rootEnv[key]?.trim(),
+);
+if (missingConfirmationKeys.length > 0) {
   console.error(
-    `Missing required env values for the registration confirmation function: ${missingKeys.join(", ")}`,
+    `Missing required env values for the registration confirmation function: ${missingConfirmationKeys.join(", ")}`,
   );
   process.exit(1);
 }
 
-const functionEnv = {
+const sharedRegistrationEnv = {
   APPWRITE_DB_ID: rootEnv.APPWRITE_DB_ID?.trim() || "mazex_data",
   APPWRITE_COLLECTION_REGISTRATION_FORMS:
-    rootEnv.APPWRITE_COLLECTION_REGISTRATION_FORMS?.trim() ||
-    "registration_forms",
+    rootEnv.APPWRITE_COLLECTION_REGISTRATION_FORMS?.trim() || "registration_forms",
   APPWRITE_COLLECTION_REGISTRATION_FIELDS:
-    rootEnv.APPWRITE_COLLECTION_REGISTRATION_FIELDS?.trim() ||
-    "registration_fields",
+    rootEnv.APPWRITE_COLLECTION_REGISTRATION_FIELDS?.trim() || "registration_fields",
   APPWRITE_COLLECTION_REGISTRATION_SUBMISSIONS:
     rootEnv.APPWRITE_COLLECTION_REGISTRATION_SUBMISSIONS?.trim() ||
     "registration_submissions",
+  APPWRITE_COLLECTION_REGISTRATION_UNIQUE_VALUES:
+    rootEnv.APPWRITE_COLLECTION_REGISTRATION_UNIQUE_VALUES?.trim() ||
+    "registration_unique_values",
+  APPWRITE_BUCKET_REGISTRATION_FILES:
+    rootEnv.APPWRITE_BUCKET_REGISTRATION_FILES?.trim() || "registration_files",
 };
 
-for (const key of [...REQUIRED_KEYS, ...OPTIONAL_KEYS]) {
+const confirmationFunctionEnv = {
+  ...sharedRegistrationEnv,
+};
+
+for (const key of [...CONFIRMATION_REQUIRED_KEYS, ...CONFIRMATION_OPTIONAL_KEYS]) {
   if (!rootEnv[key]) continue;
-  functionEnv[key] = rootEnv[key].trim();
+  confirmationFunctionEnv[key] = rootEnv[key].trim();
 }
 
-mkdirSync(dirname(functionEnvPath), { recursive: true });
-
-const envFileContents = Object.entries(functionEnv)
-  .map(([key, value]) => `${key}=${serializeEnvValue(value)}`)
-  .join("\n");
-
-writeFileSync(functionEnvPath, `${envFileContents}\n`, "utf8");
-
-console.log(`Wrote Appwrite function env: ${functionEnvPath}`);
+writeFunctionEnv(confirmationEnvPath, confirmationFunctionEnv);

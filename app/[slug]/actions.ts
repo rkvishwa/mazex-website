@@ -1,18 +1,22 @@
 "use server";
 
-import { AppwriteException, Storage, ID } from "node-appwrite";
 import { revalidatePath } from "next/cache";
-import { AppwriteConfigError, createAppwriteAdminClient } from "@/lib/appwrite";
+import { headers } from "next/headers";
+import { AppwriteConfigError } from "@/lib/appwrite";
 import {
+  attachUniqueValueReservationsToSubmission,
   coerceFieldValue,
   createRegistrationSubmission,
-  getDefaultSuccessMessage,
+  deleteRegistrationFiles,
+  FormSubmissionNotAllowedError,
   getFormAvailability,
+  getRegistrationFormById,
   getRegistrationFormBySlug,
   isRegistrationsConfigured,
   releaseUniqueValueReservations,
   reserveUniqueFieldValues,
   UniqueFieldConflictError,
+  uploadRegistrationFile,
   validateFieldValue,
 } from "@/lib/registrations";
 import type { SubmissionAnswerValue } from "@/lib/registration-types";
@@ -26,6 +30,10 @@ export type SubmitRegistrationState = {
 };
 
 const empty: Record<string, string> = {};
+const HONEYPOT_FIELD_NAME = "registration_url";
+const MAX_TOTAL_UPLOAD_BYTES = 25 * 1024 * 1024;
+const DEFAULT_SUCCESS_MESSAGE =
+  "Registration received successfully. We will contact you with the next steps.";
 
 function buildState(
   status: SubmitRegistrationState["status"],
@@ -36,29 +44,112 @@ function buildState(
   return { status, message, fieldErrors, toastKey: Date.now(), fields };
 }
 
+function getSerializedFieldRecord(
+  formData: FormData,
+): Record<string, string | string[]> {
+  const fieldsRecord: Record<string, string | string[]> = {};
+
+  for (const [key, val] of Array.from(formData.entries())) {
+    if (typeof val !== "string") continue;
+
+    if (fieldsRecord[key] !== undefined) {
+      if (Array.isArray(fieldsRecord[key])) {
+        (fieldsRecord[key] as string[]).push(val);
+      } else {
+        fieldsRecord[key] = [fieldsRecord[key] as string, val];
+      }
+    } else {
+      fieldsRecord[key] = val;
+    }
+  }
+
+  return fieldsRecord;
+}
+
+async function isSameOriginSubmission() {
+  const requestHeaders = await headers();
+  const origin = requestHeaders.get("origin");
+  if (!origin) return true;
+
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+  const protocol = requestHeaders.get("x-forwarded-proto");
+  if (!host) return false;
+
+  try {
+    const requestOrigin = new URL(origin);
+    return requestOrigin.host === host && (!protocol || requestOrigin.protocol === `${protocol}:`);
+  } catch {
+    return false;
+  }
+}
+
+function getTotalUploadBytes(records: Array<Record<string, SubmissionAnswerValue>>) {
+  let total = 0;
+
+  for (const record of records) {
+    for (const value of Object.values(record)) {
+      if (value instanceof File) {
+        total += value.size;
+      }
+    }
+  }
+
+  return total;
+}
+
+async function uploadAnswerFiles(
+  record: Record<string, SubmissionAnswerValue>,
+  uploadedFileIds: string[],
+) {
+  for (const [key, value] of Object.entries(record)) {
+    if (!(value instanceof File)) continue;
+
+    const fileId = await uploadRegistrationFile(value);
+    record[key] = fileId;
+    uploadedFileIds.push(fileId);
+  }
+}
+
 export async function submitRegistrationAction(
   _prev: SubmitRegistrationState,
   formData: FormData,
 ): Promise<SubmitRegistrationState> {
-  const fieldsRecord: Record<string, string | string[]> = {};
-  for (const [key, val] of Array.from(formData.entries())) {
-    if (typeof val === "string") {
-      if (fieldsRecord[key] !== undefined) {
-        if (Array.isArray(fieldsRecord[key])) {
-          (fieldsRecord[key] as string[]).push(val);
-        } else {
-          fieldsRecord[key] = [fieldsRecord[key] as string, val];
-        }
-      } else {
-        fieldsRecord[key] = val;
-      }
-    }
+  const fieldsRecord = getSerializedFieldRecord(formData);
+  const honeypotValue = formData.get(HONEYPOT_FIELD_NAME);
+  if (typeof honeypotValue === "string" && honeypotValue.trim()) {
+    return buildState(
+      "error",
+      "Unable to submit right now. Please refresh and try again.",
+      empty,
+      fieldsRecord,
+    );
   }
+
+  if (!(await isSameOriginSubmission())) {
+    return buildState(
+      "error",
+      "This submission could not be verified. Please refresh and try again.",
+      empty,
+      fieldsRecord,
+    );
+  }
+
+  const formIdValue = formData.get("formId");
+  const formId = typeof formIdValue === "string" ? formIdValue.trim() : "";
   const slugValue = formData.get("slug");
   const slug = typeof slugValue === "string" ? slugValue.trim() : "";
-  if (!slug) return buildState("error", "Unable to determine which form to submit.", empty, fieldsRecord);
+  if (!formId && !slug) {
+    return buildState(
+      "error",
+      "Unable to determine which form to submit.",
+      empty,
+      fieldsRecord,
+    );
+  }
 
-  const form = await getRegistrationFormBySlug(slug);
+  const form = formId
+    ? await getRegistrationFormById(formId)
+    : await getRegistrationFormBySlug(slug);
   if (!form) return buildState("error", "This registration form was not found.", empty, fieldsRecord);
 
   const availability = getFormAvailability(form);
@@ -82,12 +173,13 @@ export async function submitRegistrationAction(
     );
   }
 
+  // Client-side validation for immediate feedback
   const fieldErrors: Record<string, string> = {};
   const submissionFields = form.fields.filter((f) => f.scope === "submission" && f.type !== "page_break");
   const memberFields = form.fields.filter((f) => f.scope === "member" && f.type !== "page_break");
   const answers: Record<string, SubmissionAnswerValue> = {};
   const uniqueValidationEntries: Array<{
-    field: (typeof submissionFields)[number];
+    field: (typeof form.fields)[number];
     value: SubmissionAnswerValue;
     errorKey: string;
   }> = [];
@@ -135,6 +227,7 @@ export async function submitRegistrationAction(
     }
   }
 
+  // Return early on client-side validation errors
   if (Object.keys(fieldErrors).length > 0) {
     return buildState(
       "error",
@@ -144,9 +237,17 @@ export async function submitRegistrationAction(
     );
   }
 
-  const primaryTeam  = null;
-  let reservedUniqueValueIds: string[] = [];
+  const totalUploadBytes = getTotalUploadBytes([answers, ...memberAnswers]);
+  if (totalUploadBytes > MAX_TOTAL_UPLOAD_BYTES) {
+    return buildState(
+      "error",
+      "Combined uploads must be 25MB or less.",
+      empty,
+      fieldsRecord,
+    );
+  }
 
+  let reservedUniqueValueIds: string[] = [];
   try {
     reservedUniqueValueIds = await reserveUniqueFieldValues({
       formId: form.id,
@@ -166,6 +267,7 @@ export async function submitRegistrationAction(
       return buildState("error", error.message, empty, fieldsRecord);
     }
 
+    console.error("Unique value reservation failed:", error);
     return buildState(
       "error",
       "Unable to verify unique field values right now. Please try again.",
@@ -174,72 +276,65 @@ export async function submitRegistrationAction(
     );
   }
 
-  // Upload any captured Files to Appwrite Storage and replace with file IDs.
+  const uploadedFileIds: string[] = [];
   try {
-    const client = createAppwriteAdminClient();
-    const storage = new Storage(client);
-    const bucketId = process.env.APPWRITE_BUCKET_REGISTRATION_FILES || "registration_files";
-
-    const uploadFileIfPresent = async (record: Record<string, SubmissionAnswerValue>, key: string) => {
-      const val = record[key];
-      if (val instanceof File) {
-        const uploaded = await storage.createFile(bucketId, ID.unique(), val);
-        record[key] = uploaded.$id;
-      }
-    };
-
-    // Upload main form answers
-    const uploadPromises: Promise<void>[] = [];
-    for (const key of Object.keys(answers)) uploadPromises.push(uploadFileIfPresent(answers, key));
-
-    // Upload team member answers
+    await uploadAnswerFiles(answers, uploadedFileIds);
     for (const member of memberAnswers) {
-      for (const key of Object.keys(member)) uploadPromises.push(uploadFileIfPresent(member, key));
+      await uploadAnswerFiles(member, uploadedFileIds);
     }
 
-    await Promise.all(uploadPromises);
-  } catch (error) {
-    await releaseUniqueValueReservations(reservedUniqueValueIds);
-    console.error("File upload failed", error);
-    return buildState("error", "Failed to upload one or more files. Please try again.", empty, fieldsRecord);
-  }
-
-  try {
-    await createRegistrationSubmission({
+    const submission = await createRegistrationSubmission({
       formId: form.id,
       answers,
       memberAnswers,
-      teamName: primaryTeam,
+      teamName: null,
     });
+
+    await attachUniqueValueReservationsToSubmission(
+      reservedUniqueValueIds,
+      submission.$id,
+    );
+
+    revalidatePath("/");
+    revalidatePath(`/${form.slug}`);
+    revalidatePath("/admin");
+    revalidatePath("/admin/registrations");
+
+    return buildState(
+      "success",
+      form.successMessage || DEFAULT_SUCCESS_MESSAGE,
+    );
   } catch (error) {
-    if (error instanceof AppwriteException) {
+    try {
       await releaseUniqueValueReservations(reservedUniqueValueIds);
-      if (error.code === 404)
-        return buildState(
-          "error",
-          "Registration database not set up. Contact the administrator.",
-          empty,
-          fieldsRecord,
-        );
-      if ([401, 403].includes(error.code ?? 0))
-        return buildState(
-          "error",
-          "Submission rejected due to a permissions error. Contact the administrator.",
-          empty,
-          fieldsRecord,
-        );
-      return buildState("error", error.message || "Unable to submit right now. Try again.", empty, fieldsRecord);
+    } catch (cleanupError) {
+      console.error("Failed to release unique value reservations:", cleanupError);
     }
-    await releaseUniqueValueReservations(reservedUniqueValueIds);
-    if (error instanceof AppwriteConfigError)
+
+    try {
+      await deleteRegistrationFiles(uploadedFileIds);
+    } catch (cleanupError) {
+      console.error("Failed to delete uploaded registration files:", cleanupError);
+    }
+
+    if (error instanceof UniqueFieldConflictError) {
+      return buildState(
+        "error",
+        "Please fix the highlighted fields and try again.",
+        error.fieldErrors,
+        fieldsRecord,
+      );
+    }
+
+    if (error instanceof FormSubmissionNotAllowedError) {
       return buildState("error", error.message, empty, fieldsRecord);
+    }
+
+    if (error instanceof AppwriteConfigError) {
+      return buildState("error", error.message, empty, fieldsRecord);
+    }
+
+    console.error("Direct registration submission failed:", error);
     return buildState("error", "Unable to submit right now. Please try again.", empty, fieldsRecord);
   }
-
-  revalidatePath("/");
-  revalidatePath(`/${slug}`);
-  revalidatePath("/admin");
-  revalidatePath("/admin/registrations");
-
-  return buildState("success", getDefaultSuccessMessage(form));
 }

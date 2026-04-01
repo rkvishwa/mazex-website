@@ -6,7 +6,7 @@ export const NAV_LINKS = [
 ];
 
 export const HERO_STATS = [
-    { icon: "🏁", label: "Competition Day: June 20, 2026" },
+    { icon: "🏁", label: "Competition Day: 20/06/2026" },
     { icon: "🤖", label: "Autonomous Micromouse Robots" },
     { icon: "🎓", label: "University of Moratuwa" },
 ];
@@ -29,24 +29,24 @@ export const TIMELINE_EVENTS = [
     {
         number: "01",
         title: "Registration Opens",
-        date: "April 4th, 2026",
+        date: "04/04/2026",
     },
     {
         number: "02",
         title: "Registration Closes",
-        date: "May 5th, 2026",
+        date: "05/05/2026",
     },
     {
         number: "03",
         title: "Competition Day",
-        date: "June 20th, 2026",
+        date: "20/06/2026",
     },
 ];
 
 export const WORKSHOP_EVENTS = [
     {
         number: "01",
-        date: "11th April, 2026",
+        date: "11/04/2026",
         fullDate: "2026-04-11",
         title: "Foundations, Components & Build Start",
         description:
@@ -54,7 +54,7 @@ export const WORKSHOP_EVENTS = [
     },
     {
         number: "02",
-        date: "18th April, 2026",
+        date: "18/04/2026",
         fullDate: "2026-04-18",
         title: "Microcontrollers, Sensors & Basic Movement",
         description:
@@ -62,7 +62,7 @@ export const WORKSHOP_EVENTS = [
     },
     {
         number: "03",
-        date: "25th April, 2026",
+        date: "25/04/2026",
         fullDate: "2026-04-25",
         title: "PID Control & Wall Following",
         description:
@@ -70,7 +70,7 @@ export const WORKSHOP_EVENTS = [
     },
     {
         number: "04",
-        date: "2nd May, 2026",
+        date: "02/05/2026",
         fullDate: "2026-05-02",
         title: "Maze-Solving Algorithms & Full Integration",
         description:

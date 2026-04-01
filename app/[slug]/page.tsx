@@ -10,6 +10,7 @@ import {
   getRegistrationFormBySlug,
 } from "@/lib/registrations";
 import { RESERVED_SLUGS } from "@/lib/registration-types";
+import { getResolvedSiteEvents } from "@/lib/site-events";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -41,10 +42,11 @@ export default async function SlugPage({ params }: PageProps) {
 
   const availability = getFormAvailability(form);
   const bannerUrl = form.bannerFileId ? getFormBannerUrl(form.bannerFileId) : null;
+  const siteEvents = await getResolvedSiteEvents();
 
   return (
     <>
-      <Navbar />
+      <Navbar registerHref={siteEvents.competition.navbarHref} />
       <main className="site-shell min-h-screen">
         <div aria-hidden="true" className="site-background">
           <div className="site-background-glow site-background-glow-primary" />

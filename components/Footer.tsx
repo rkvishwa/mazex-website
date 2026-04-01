@@ -5,22 +5,15 @@ import Image from "next/image";
 import {
   FaFacebookF,
   FaInstagram,
-  FaLinkedinIn,
   FaWhatsapp,
   FaYoutube,
 } from "react-icons/fa";
-import { HiOutlineMail } from "react-icons/hi";
 
 const SOCIAL_LINKS = [
   {
     icon: FaFacebookF,
     label: "Facebook",
-    href: "https://www.facebook.com/IEEEUOMSB",
-  },
-  {
-    icon: FaLinkedinIn,
-    label: "LinkedIn",
-    href: "https://www.linkedin.com/company/ieeeuomsb/",
+    href: "https://tinyurl.com/32peyx86",
   },
   {
     icon: FaYoutube,
@@ -30,12 +23,12 @@ const SOCIAL_LINKS = [
   {
     icon: FaInstagram,
     label: "Instagram",
-    href: "https://www.instagram.com/ieeesbuom",
+    href: "https://tinyurl.com/mvuzewvh",
   },
   {
     icon: FaWhatsapp,
     label: "WhatsApp",
-    href: "https://whatsapp.com/channel/0029VawdYwuFnSzHnM7b8J30",
+    href: "https://tinyurl.com/37at6ae4",
   },
 ];
 
@@ -82,14 +75,6 @@ export default function Footer() {
               Micromouse Workshop Series &amp; Competition organized by IEEE RAS
               and WIE at the University of Moratuwa.
             </p>
-
-            <a
-              href="mailto:ieeerassbm@gmail.com"
-              className="inline-flex items-center gap-2 text-sm text-[#c9bedb] hover:text-[#f8fafc]"
-            >
-              <HiOutlineMail size={16} />
-              ieeerassbm@gmail.com
-            </a>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               {SOCIAL_LINKS.map((social) => {

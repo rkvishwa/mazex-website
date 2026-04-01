@@ -154,7 +154,7 @@ export default function AdminSettingsForm({
         </div>
       ) : null}
 
-      <div className="mx-auto w-full max-w-2xl px-4 sm:px-0">
+      <div className="mx-auto w-full max-w-6xl px-4 sm:px-0">
         <div className="space-y-6">
           <section
             id={GOOGLE_SHEETS_SECTION_ID}

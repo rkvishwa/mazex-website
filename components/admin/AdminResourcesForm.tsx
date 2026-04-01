@@ -97,7 +97,7 @@ export default function AdminResourcesForm({
         </div>
       ) : null}
 
-      <div className="mx-auto w-full max-w-3xl px-4 sm:px-0">
+      <div className="mx-auto w-full max-w-6xl px-4 sm:px-0">
         <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
           <div className="max-w-2xl">
             <div className="inline-flex items-center rounded-md bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">

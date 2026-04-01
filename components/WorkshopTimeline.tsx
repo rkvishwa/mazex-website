@@ -101,13 +101,32 @@ export default function WorkshopTimeline({
   const isInView = useInView(containerRef, { once: true, margin: "-10%" });
 
   const targetProgress = useMotionValue(0);
-  const firstDotProgress = events.length > 0 ? 1 / (events.length * 2) : 0;
-
   useEffect(() => {
-    if (isInView) {
-      targetProgress.set(firstDotProgress);
+    if (isInView && events.length > 0) {
+      // Get current date in Sri Lankan timezone (Colombo)
+      const now = new Date();
+      const options: Intl.DateTimeFormatOptions = {
+        timeZone: "Asia/Colombo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      };
+      
+      const formatter = new Intl.DateTimeFormat("en-CA", options);
+      const todayStr = formatter.format(now); // en-CA format is YYYY-MM-DD
+
+      // Find the first workshop that hasn't passed yet (including today)
+      let activeIndex = events.findIndex((event) => event.date >= todayStr);
+
+      // If all workshops have passed, stay at the last one
+      if (activeIndex === -1) {
+        activeIndex = events.length - 1;
+      }
+
+      const progress = (2 * activeIndex + 1) / (2 * events.length);
+      targetProgress.set(progress);
     }
-  }, [firstDotProgress, isInView, targetProgress]);
+  }, [events, isInView, targetProgress]);
 
   const smoothProgress = useSpring(targetProgress, {
     stiffness: 80,

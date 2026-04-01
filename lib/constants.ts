@@ -1,8 +1,8 @@
 export const NAV_LINKS = [
     { label: "About", href: "#about" },
     { label: "Timeline", href: "#timeline" },
+    { label: "Sponsors", href: "#sponsors" },
     { label: "Gallery", href: "#past-events" },
-    { label: "Contact Us", href: "#contact" },
 ];
 
 export const HERO_STATS = [

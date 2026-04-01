@@ -14,15 +14,31 @@ const googleSheetsEnvPath = resolve(
   __dirname,
   "../functions/sync-registration-to-google-sheets/.env",
 );
+const resendContactsEnvPath = resolve(
+  __dirname,
+  "../functions/sync-registration-contacts-to-resend/.env",
+);
 
 const CONFIRMATION_OPTIONAL_KEYS = [
   "APPWRITE_MESSAGING_EMAIL_PROVIDER_ID",
-  "APPWRITE_MESSAGING_CONTACTS_TOPIC_ID",
 ];
 
 const GOOGLE_SHEETS_OPTIONAL_KEYS = [
   "GOOGLE_OAUTH_CLIENT_ID",
   "GOOGLE_OAUTH_CLIENT_SECRET",
+];
+
+const RESEND_CONTACTS_OPTIONAL_KEYS = [
+  "APPWRITE_MESSAGING_EMAIL_PROVIDER_ID",
+  "APPWRITE_BUCKET_EMAIL_ASSETS",
+  "RESEND_API_KEY",
+  "RESEND_FROM",
+  "RESEND_REPLY_TO",
+  "RESEND_MARKETING_FROM",
+  "RESEND_MARKETING_REPLY_TO",
+  "RESEND_SEGMENT_ALL_NAME",
+  "RESEND_SEGMENT_COMPETITION_NAME",
+  "RESEND_SEGMENT_WORKSHOP_NAME",
 ];
 
 function parseEnvFile(source) {
@@ -121,3 +137,16 @@ for (const key of GOOGLE_SHEETS_OPTIONAL_KEYS) {
 }
 
 writeFunctionEnv(googleSheetsEnvPath, googleSheetsFunctionEnv);
+
+const resendContactsFunctionEnv = {
+  ...sharedRegistrationEnv,
+  APPWRITE_BUCKET_EMAIL_ASSETS:
+    rootEnv.APPWRITE_BUCKET_EMAIL_ASSETS?.trim() || "email_assets",
+};
+
+for (const key of RESEND_CONTACTS_OPTIONAL_KEYS) {
+  if (!rootEnv[key]) continue;
+  resendContactsFunctionEnv[key] = rootEnv[key].trim();
+}
+
+writeFunctionEnv(resendContactsEnvPath, resendContactsFunctionEnv);

@@ -1,0 +1,8 @@
+{
+  "name": "sync-registration-contacts-to-resend",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "node-appwrite": "^23.0.0"
+  }
+}

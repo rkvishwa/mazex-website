@@ -88,6 +88,32 @@
             "entrypoint": "src/main.js",
             "commands": "npm install --omit=dev",
             "path": "functions/sync-registration-to-google-sheets"
+        },
+        {
+            "$id": "registration_resend_contacts",
+            "name": "Registration Resend Contacts",
+            "runtime": "node-22",
+            "execute": [],
+            "events": [
+                "databases.*.collections.*.documents.*.create"
+            ],
+            "scopes": [
+                "databases.read",
+                "databases.write",
+                "documents.read",
+                "documents.write",
+                "users.read",
+                "users.write",
+                "targets.read",
+                "targets.write"
+            ],
+            "schedule": "",
+            "timeout": 60,
+            "enabled": true,
+            "logging": true,
+            "entrypoint": "src/main.js",
+            "commands": "npm install --omit=dev",
+            "path": "functions/sync-registration-contacts-to-resend"
         }
     ],
     "databases": [
@@ -682,6 +708,29 @@
                     "size": 255,
                     "encrypt": false,
                     "default": null
+                },
+                {
+                    "key": "resendContactId",
+                    "type": "string",
+                    "required": false,
+                    "array": false,
+                    "size": 255,
+                    "encrypt": false,
+                    "default": null
+                },
+                {
+                    "key": "registeredForCompetition",
+                    "type": "boolean",
+                    "required": false,
+                    "array": false,
+                    "default": false
+                },
+                {
+                    "key": "registeredForWorkshop",
+                    "type": "boolean",
+                    "required": false,
+                    "array": false,
+                    "default": false
                 },
                 {
                     "key": "lastFormId",

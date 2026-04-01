@@ -11,11 +11,8 @@ import {
 const DEFAULT_SUBMISSIONS_COLLECTION_ID = "registration_submissions";
 const DEFAULT_EMAIL_ASSETS_BUCKET_ID = "email_assets";
 const DEFAULT_CONTACTS_COLLECTION_ID = "registration_contacts";
-const DEFAULT_CONTACTS_TOPIC_ID = "registration_contacts";
-const DEFAULT_CONTACTS_TOPIC_NAME = "MazeX Registration Contacts";
 const PRIMARY_EMAIL_TARGET_ID = "primary_email";
 const CONTACT_ID_PREFIX = "contact_";
-const CONTACT_SUBSCRIBER_PREFIX = "sub_";
 const CONTACT_HASH_LENGTH = 28;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
 const FILE_FIELD_LABEL = "file";
@@ -121,13 +118,6 @@ function getContactsCollectionId() {
   );
 }
 
-function getContactsTopicId() {
-  return (
-    process.env.APPWRITE_MESSAGING_CONTACTS_TOPIC_ID?.trim() ||
-    DEFAULT_CONTACTS_TOPIC_ID
-  );
-}
-
 function getEmailProviderId() {
   return process.env.APPWRITE_MESSAGING_EMAIL_PROVIDER_ID?.trim() || "";
 }
@@ -189,10 +179,6 @@ function getContactDocumentId(email) {
 
 function getContactUserId(email) {
   return buildScopedId(CONTACT_ID_PREFIX, email);
-}
-
-function getContactSubscriberId(email) {
-  return buildScopedId(CONTACT_SUBSCRIBER_PREFIX, email);
 }
 
 function getStoredFileId(value) {
@@ -652,41 +638,6 @@ async function ensureContactTarget(req, params) {
   });
 }
 
-async function ensureContactsTopic(req) {
-  const messaging = createMessagingService(req);
-  const topicId = getContactsTopicId();
-
-  try {
-    await messaging.createTopic({
-      topicId,
-      name: DEFAULT_CONTACTS_TOPIC_NAME,
-    });
-  } catch (error) {
-    if (!(error instanceof Error) || error.code !== 409) {
-      throw error;
-    }
-  }
-
-  return topicId;
-}
-
-async function ensureContactSubscription(req, email, targetId) {
-  const messaging = createMessagingService(req);
-  const topicId = await ensureContactsTopic(req);
-
-  try {
-    await messaging.createSubscriber({
-      topicId,
-      subscriberId: getContactSubscriberId(email),
-      targetId,
-    });
-  } catch (error) {
-    if (!(error instanceof Error) || error.code !== 409) {
-      throw error;
-    }
-  }
-}
-
 async function getExistingContactDocument(req, email) {
   const databases = createDatabasesService(req);
   const databaseId = getRequiredEnv("APPWRITE_DB_ID");
@@ -707,34 +658,7 @@ async function getExistingContactDocument(req, email) {
   }
 }
 
-async function upsertContactDocument(req, params) {
-  const databases = createDatabasesService(req);
-  const databaseId = getRequiredEnv("APPWRITE_DB_ID");
-  const collectionId = getContactsCollectionId();
-  const documentId = getContactDocumentId(params.email);
-  const data = {
-    email: params.email,
-    name: params.name,
-    userId: params.userId,
-    targetId: params.targetId,
-    lastFormId: params.lastFormId,
-    lastFormTitle: params.lastFormTitle,
-    lastSubmissionId: params.lastSubmissionId,
-    lastSubmittedAt: params.lastSubmittedAt,
-  };
-
-  try {
-    return await databases.updateDocument(databaseId, collectionId, documentId, data);
-  } catch (error) {
-    if (!(error instanceof Error) || error.code !== 404) {
-      throw error;
-    }
-  }
-
-  return databases.createDocument(databaseId, collectionId, documentId, data);
-}
-
-async function syncRegistrationContact(req, params) {
+async function resolveRegistrationTarget(req, params) {
   const normalizedEmail = normalizeEmailAddress(params.email);
   const existingContact = await getExistingContactDocument(req, normalizedEmail);
   const user = await ensureContactUser(req, {
@@ -747,18 +671,6 @@ async function syncRegistrationContact(req, params) {
     email: normalizedEmail,
     name: params.name,
     existingTargetId: trim(existingContact?.targetId),
-  });
-
-  await ensureContactSubscription(req, normalizedEmail, target.$id);
-  await upsertContactDocument(req, {
-    email: normalizedEmail,
-    name: params.name || trimNullable(user.name),
-    userId: user.$id,
-    targetId: target.$id,
-    lastFormId: params.lastFormId,
-    lastFormTitle: params.lastFormTitle,
-    lastSubmissionId: params.lastSubmissionId,
-    lastSubmittedAt: params.lastSubmittedAt,
   });
 
   return {
@@ -856,13 +768,9 @@ async function sendRegistrationConfirmationEmail(context) {
   const sortedFields = [...fieldsResult.documents].sort(
     (a, b) => a.sortOrder - b.sortOrder,
   );
-  const contact = await syncRegistrationContact(req, {
+  const contact = await resolveRegistrationTarget(req, {
     email: recipientEmail,
     name: recipientName,
-    lastFormId: formId,
-    lastFormTitle: formTitle || null,
-    lastSubmissionId: trim(payload.$id),
-    lastSubmittedAt: trim(payload.$createdAt),
   });
   const email = buildEmail(
     recipientName,

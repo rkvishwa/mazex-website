@@ -5,6 +5,8 @@
   "scripts": {
     "appwrite:functions:prepare-env": "node scripts/prepare-appwrite-function-env.mjs",
     "appwrite:functions:push": "npm run appwrite:functions:prepare-env && appwrite push functions --with-variables",
+    "appwrite:functions:deploy-confirmation": "npm run appwrite:functions:prepare-env && node scripts/deploy-registration-confirmation-function.mjs",
+    "appwrite:functions:deploy-resend-contacts": "npm run appwrite:functions:prepare-env && node scripts/deploy-resend-contacts-function.mjs",
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",

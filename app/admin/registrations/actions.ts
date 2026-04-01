@@ -660,6 +660,15 @@ export async function updateRegistrationFormSettingsAction(
     const statusValue = readString(formData, "status");
     if (!isStatus(statusValue)) throw new Error("Choose a valid form status.");
 
+    const kindValue = readString(formData, "kind");
+    if (!isFormKind(kindValue)) throw new Error("Choose a valid form kind.");
+
+    if (kindValue !== form.kind && linkedEvent) {
+      throw new Error(
+        `"${form.title}" is linked to ${linkedEvent.title}. Unlink it from Events before changing the form type.`,
+      );
+    }
+
     const openAt = parseOptionalDate(readString(formData, "openAt"));
     const closeAt = parseOptionalDate(readString(formData, "closeAt"), true);
     const openAtRaw = readString(formData, "openAt");
@@ -693,7 +702,7 @@ export async function updateRegistrationFormSettingsAction(
       );
     }
 
-    const isCompetition = form.kind === "competition";
+    const isCompetition = kindValue === "competition";
     const teamMinMembers = isCompetition
       ? parseInteger(readString(formData, "teamMinMembers"), Number.NaN)
       : 1;
@@ -741,6 +750,7 @@ export async function updateRegistrationFormSettingsAction(
       slug,
       title,
       description: readOptionalString(formData, "description"),
+      kind: kindValue,
       status: statusValue,
       openAt,
       closeAt,

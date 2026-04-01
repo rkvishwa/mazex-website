@@ -75,15 +75,16 @@ export default function AdminDashboardShell({
         )}
       >
         <div className={cn("flex items-center h-16 border-b border-zinc-200 dark:border-zinc-800", sidebarCollapsed ? "justify-between px-6 lg:justify-center lg:px-0" : "justify-between px-6")}>
-          <div
+          <Link
+            href="/"
             className={cn(
-              "flex items-center gap-2 font-bold text-lg tracking-tight",
+              "flex items-center gap-2 font-bold text-lg tracking-tight hover:opacity-80 transition-opacity",
               sidebarCollapsed ? "lg:hidden" : "flex"
             )}
           >
             <img src="/images/brand/logo.svg" alt="MazeX Logo" className="h-10 w-auto dark:hidden" />
             <img src="/images/brand/logo-white.svg" alt="MazeX Logo" className="hidden h-10 w-auto dark:block" />
-          </div>
+          </Link>
 
           <div className="flex items-center gap-2">
             <button
@@ -192,10 +193,10 @@ export default function AdminDashboardShell({
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="ml-4 flex items-center gap-2 font-bold text-lg tracking-tight">
+            <Link href="/" className="ml-4 flex items-center gap-2 font-bold text-lg tracking-tight hover:opacity-80 transition-opacity">
               <img src="/images/brand/logo.svg" alt="MazeX Logo" className="h-10 w-auto dark:hidden" />
               <img src="/images/brand/logo-white.svg" alt="MazeX Logo" className="hidden h-10 w-auto dark:block" />
-            </div>
+            </Link>
           </header>
 
           {/* Page Content */}

@@ -298,6 +298,7 @@ async function getSynchronizedSiteEventSnapshot(): Promise<SiteEventSnapshot> {
         slug: form.slug,
         title: form.title,
         description: form.description,
+        kind: form.kind,
         status: desiredState.status,
         openAt: desiredState.openAt,
         closeAt: desiredState.closeAt,

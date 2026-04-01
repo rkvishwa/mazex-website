@@ -982,6 +982,7 @@ export async function updateRegistrationFormSettings(params: {
   slug: string;
   title: string;
   description: string | null;
+  kind: RegistrationFormKind;
   status: RegistrationFormStatus;
   openAt: string | null;
   closeAt: string | null;
@@ -1007,6 +1008,7 @@ export async function updateRegistrationFormSettings(params: {
       slug: params.slug,
       title: params.title,
       description: params.description,
+      kind: params.kind,
       status: params.status,
       openAt: params.openAt,
       closeAt: params.closeAt,

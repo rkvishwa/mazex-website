@@ -198,14 +198,47 @@ function CreateFormPanel({ formCount, onCancel }: { formCount: number; onCancel:
 }
 
 // ─── Banner upload ────────────────────────────────────────────────────────────
+const BANNER_MAX_BYTES = 5 * 1024 * 1024;
+const BANNER_ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/avif"];
+
 function BannerArea({ form, bannerUrl }: { form: FormDefinition; bannerUrl: string | null }) {
-  const [, uploadDispatch] = useActionState(uploadFormBannerAction, IDLE);
+  const [uploadState, uploadDispatch] = useActionState(uploadFormBannerAction, IDLE);
   const [, deleteDispatch] = useActionState(deleteFormBannerAction, IDLE);
   const fileRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const [clientError, setClientError] = useState<string | null>(null);
+
+  const uploadToast = useToast(uploadState);
+
+  function handleFileChange() {
+    setClientError(null);
+    const file = fileRef.current?.files?.[0];
+    if (!file) return;
+
+    if (!BANNER_ALLOWED_TYPES.includes(file.type)) {
+      setClientError("Only PNG, JPEG, WebP, or AVIF images are accepted.");
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+    if (file.size > BANNER_MAX_BYTES) {
+      setClientError(`Image is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max 5 MB.`);
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+
+    formRef.current?.requestSubmit();
+  }
 
   return (
     <div className="relative overflow-hidden w-full border-b border-zinc-200 dark:border-zinc-800">
+      {uploadToast.visible && <Toast state={uploadToast.visible} onClose={uploadToast.dismiss} />}
+      {clientError && (
+        <div className="flex items-center gap-2 bg-rose-50 px-4 py-2 text-xs text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+          <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+          {clientError}
+          <button type="button" onClick={() => setClientError(null)} className="ml-auto"><X className="h-3.5 w-3.5" /></button>
+        </div>
+      )}
       {bannerUrl ? (
         <div className="relative aspect-[3/1] w-full group">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -220,8 +253,8 @@ function BannerArea({ form, bannerUrl }: { form: FormDefinition; bannerUrl: stri
             <form action={uploadDispatch} ref={formRef}>
               <input type="hidden" name="formId" value={form.id} />
               <input ref={fileRef} type="file" name="banner" accept="image/*" className="hidden"
-                onChange={() => formRef.current?.requestSubmit()} />
-              <button type="button" onClick={() => fileRef.current?.click()}
+                onChange={handleFileChange} />
+              <button type="button" onClick={() => { setClientError(null); fileRef.current?.click(); }}
                 className="rounded-md bg-white/20 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-md hover:bg-white/30 transition-colors border border-white/20">
                 Replace banner
               </button>
@@ -236,11 +269,11 @@ function BannerArea({ form, bannerUrl }: { form: FormDefinition; bannerUrl: stri
         <form action={uploadDispatch} ref={formRef} className="w-full aspect-[3/1]">
           <input type="hidden" name="formId" value={form.id} />
           <input ref={fileRef} type="file" name="banner" accept="image/*" className="hidden"
-            onChange={() => formRef.current?.requestSubmit()} />
-          <button type="button" onClick={() => fileRef.current?.click()}
+            onChange={handleFileChange} />
+          <button type="button" onClick={() => { setClientError(null); fileRef.current?.click(); }}
              className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-zinc-50 text-sm font-medium text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:bg-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100">
             <span className="flex items-center gap-2"><FileImage className="h-4 w-4" /> Add banner image</span>
-            <span className="text-[11px] font-normal text-zinc-400 dark:text-zinc-500">Recommended aspect ratio: 3:1</span>
+            <span className="text-[11px] font-normal text-zinc-400 dark:text-zinc-500">Recommended aspect ratio: 3:1 · Max 5 MB</span>
           </button>
         </form>
       )}
@@ -439,15 +472,18 @@ function SettingsPanel({
   form,
   googleSheetsConnection,
   googleSheetsOAuthConfigured,
+  linkedEventTitle,
 }: {
   form: FormWithFields;
   googleSheetsConnection: GoogleSheetsConnection | null;
   googleSheetsOAuthConfigured: boolean;
+  linkedEventTitle: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [slug, setSlug] = useState(form.slug);
   const router = useRouter();
+  const [kind, setKind] = useState(form.kind);
   const [confirmationEmailEnabled, setConfirmationEmailEnabled] = useState(
     form.confirmationEmailEnabled,
   );
@@ -515,6 +551,7 @@ function SettingsPanel({
     form.id,
     form.title,
     form.slug,
+    form.kind,
     form.status,
     form.description ?? "",
     form.openAt ?? "",
@@ -632,6 +669,30 @@ function SettingsPanel({
                    className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400" />
               </div>
               <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Form type</label>
+                {linkedEventTitle ? (
+                  <>
+                    <div className="flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 dark:border-amber-500/40 dark:bg-amber-500/10">
+                      <ShieldAlert className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                      <p className="text-xs leading-snug text-amber-700 dark:text-amber-300">
+                        Linked to <span className="font-semibold">{linkedEventTitle}</span>. Unlink it from Events to change the type.
+                      </p>
+                    </div>
+                    <input type="hidden" name="kind" value={form.kind} />
+                  </>
+                ) : (
+                  <select
+                    name="kind"
+                    value={kind}
+                    onChange={e => setKind(e.target.value as typeof kind)}
+                    className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
+                  >
+                    <option value="competition">Competition</option>
+                    <option value="workshop">Workshop</option>
+                  </select>
+                )}
+              </div>
+              <div>
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Status</label>
                  <select name="status" defaultValue={form.status} className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400">
                   <option value="draft">Draft</option><option value="open">Open</option><option value="closed">Closed</option>
@@ -640,9 +701,9 @@ function SettingsPanel({
                <div>
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Min / Max members</label>
                 <div className="flex gap-2">
-                  <input name="teamMinMembers" type="number" min={1} max={50} defaultValue={form.teamMinMembers} disabled={form.kind !== "competition"}
+                  <input name="teamMinMembers" type="number" min={1} max={50} defaultValue={form.teamMinMembers} disabled={kind !== "competition"}
                      className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400" />
-                  <input name="teamMaxMembers" type="number" min={1} max={50} defaultValue={form.teamMaxMembers} disabled={form.kind !== "competition"}
+                  <input name="teamMaxMembers" type="number" min={1} max={50} defaultValue={form.teamMaxMembers} disabled={kind !== "competition"}
                      className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400" />
                 </div>
               </div>
@@ -670,7 +731,7 @@ function SettingsPanel({
                   ariaLabel={`Select the close date for ${form.title}`}
                   className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400" />
               </div>
-              {form.kind === "competition" || form.kind === "workshop" ? (
+              {(kind === "competition" || kind === "workshop") ? (
                 <p className="sm:col-span-2 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
                   If this form is linked in Events, these opening and closing dates
                   stay synced with its event card.
@@ -1537,12 +1598,14 @@ export default function AdminRegistrationsManager({
   bannerUrl,
   googleSheetsConnection,
   googleSheetsOAuthConfigured,
+  linkedEventTitle,
 }: {
   forms: FormDefinition[];
   selectedForm: FormWithFields | null;
   bannerUrl: string | null;
   googleSheetsConnection: GoogleSheetsConnection | null;
   googleSheetsOAuthConfigured: boolean;
+  linkedEventTitle: string | null;
 }) {
   const [showCreate, setShowCreate] = useState(false);
   const canCreate = forms.length < MAX_REGISTRATION_FORMS;
@@ -1606,6 +1669,7 @@ export default function AdminRegistrationsManager({
             key={[
               selectedForm.id,
               selectedForm.slug,
+              selectedForm.kind,
               selectedForm.confirmationEmailEnabled ? "1" : "0",
               selectedForm.confirmationEmailTemplate ?? "",
               selectedForm.confirmationEmailFieldId ?? "",
@@ -1619,6 +1683,7 @@ export default function AdminRegistrationsManager({
             form={selectedForm}
             googleSheetsConnection={googleSheetsConnection}
             googleSheetsOAuthConfigured={googleSheetsOAuthConfigured}
+            linkedEventTitle={linkedEventTitle}
           />
         </div>
       ) : (

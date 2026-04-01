@@ -253,6 +253,7 @@ async function syncLinkedForm(
     slug: form.slug,
     title: form.title,
     description: form.description,
+    kind: form.kind,
     status: state.status,
     openAt: state.openAt,
     closeAt: state.closeAt,

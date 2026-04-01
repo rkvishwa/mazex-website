@@ -9,6 +9,8 @@ import {
   getRegistrationFormBySlug,
   listRegistrationFormCards,
 } from "@/lib/registrations";
+import { getSiteEventConfigs } from "@/lib/site-events";
+import { COMPETITION_SITE_EVENT, WORKSHOP_SITE_EVENTS } from "@/lib/site-event-types";
 
 type SearchParamsValue = string | string[] | undefined;
 
@@ -36,6 +38,23 @@ export default async function AdminFormBuilderPage({
   const bannerUrl =
     selectedForm?.bannerFileId ? getFormBannerUrl(selectedForm.bannerFileId) : null;
 
+  let linkedEventTitle: string | null = null;
+  if (selectedForm) {
+    const siteEventConfigs = await getSiteEventConfigs();
+    const competitionConfig = siteEventConfigs[COMPETITION_SITE_EVENT.key] as { formId?: string };
+    if (competitionConfig?.formId === selectedForm.id) {
+      linkedEventTitle = COMPETITION_SITE_EVENT.title;
+    } else {
+      for (const event of WORKSHOP_SITE_EVENTS) {
+        const config = siteEventConfigs[event.key] as { formId?: string };
+        if (config?.formId === selectedForm.id) {
+          linkedEventTitle = event.title;
+          break;
+        }
+      }
+    }
+  }
+
   return (
     <AdminRegistrationsManager
       forms={forms}
@@ -43,6 +62,7 @@ export default async function AdminFormBuilderPage({
       bannerUrl={bannerUrl}
       googleSheetsConnection={googleSheetsConnection}
       googleSheetsOAuthConfigured={isGoogleSheetsOAuthConfigured()}
+      linkedEventTitle={linkedEventTitle}
     />
   );
 }

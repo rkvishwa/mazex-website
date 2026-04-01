@@ -100,11 +100,32 @@ function normalizeRegistrationKind(value) {
   return null;
 }
 
+function resolveRegistrationKindFromForm(form) {
+  const candidates = [
+    form?.kind,
+    form?.slug,
+    form?.$id,
+    form?.title,
+  ];
+
+  for (const candidate of candidates) {
+    const resolved = normalizeRegistrationKind(candidate);
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  return null;
+}
+
 function clampInteger(value, options = {}) {
   const min = Number.isInteger(options.min) ? options.min : 1;
   const max = Number.isInteger(options.max) ? options.max : 100;
   const fallback = Number.isInteger(options.fallback) ? options.fallback : min;
-  const parsed = Number.parseInt(trim(value), 10);
+  const parsed =
+    typeof value === "number" && Number.isFinite(value)
+      ? Math.trunc(value)
+      : Number.parseInt(trim(value), 10);
 
   if (!Number.isFinite(parsed)) {
     return fallback;
@@ -208,6 +229,20 @@ function getSegmentName(segmentKey) {
   };
 
   return envOverrides[segmentKey] || SEGMENT_DEFINITIONS[segmentKey].name;
+}
+
+function getConfiguredSegmentId(segmentKey) {
+  const envOverrides = {
+    all: getOptionalEnv("RESEND_SEGMENT_ALL_ID"),
+    competition: getOptionalEnv("RESEND_SEGMENT_COMPETITION_ID"),
+    workshop: getOptionalEnv("RESEND_SEGMENT_WORKSHOP_ID"),
+  };
+
+  return envOverrides[segmentKey] || "";
+}
+
+function normalizeSegmentLookupName(value) {
+  return trim(value).toLowerCase();
 }
 
 function getEmailAssetUrls() {
@@ -347,40 +382,73 @@ async function createResendSegment(name) {
       return null;
     }
 
+    if (
+      error instanceof ResendRequestError &&
+      trim(error.message).toLowerCase().includes("plan includes 3 segments")
+    ) {
+      throw new Error(
+        "Resend cannot create more segments on the current plan. Reuse three existing Resend segments by setting RESEND_SEGMENT_ALL_ID, RESEND_SEGMENT_COMPETITION_ID, and RESEND_SEGMENT_WORKSHOP_ID, or delete unused Resend segments first.",
+      );
+    }
+
     throw error;
   }
 }
 
 async function ensureResendSegments() {
-  const existingSegments = await listResendSegments();
-  const byName = new Map(
-    existingSegments
-      .map((segment) => [trim(segment?.name), segment])
-      .filter(([name]) => Boolean(name)),
-  );
+  const resolved = {};
+  const unresolvedKeys = [];
 
   for (const segmentKey of Object.keys(SEGMENT_DEFINITIONS)) {
-    const segmentName = getSegmentName(segmentKey);
-    if (byName.has(segmentName)) {
+    const configuredId = getConfiguredSegmentId(segmentKey);
+    if (configuredId) {
+      resolved[segmentKey] = {
+        id: configuredId,
+        name: getSegmentName(segmentKey),
+      };
       continue;
     }
 
-    await createResendSegment(segmentName);
+    unresolvedKeys.push(segmentKey);
+  }
+
+  if (unresolvedKeys.length === 0) {
+    return resolved;
+  }
+
+  const existingSegments = await listResendSegments();
+  const byName = new Map(
+    existingSegments
+      .map((segment) => [normalizeSegmentLookupName(segment?.name), segment])
+      .filter(([name]) => Boolean(name)),
+  );
+
+  for (const segmentKey of unresolvedKeys) {
+    const segmentName = normalizeSegmentLookupName(getSegmentName(segmentKey));
+    const existingSegment = byName.get(segmentName);
+    if (existingSegment?.id) {
+      resolved[segmentKey] = existingSegment;
+      continue;
+    }
+
+    await createResendSegment(getSegmentName(segmentKey));
   }
 
   const finalSegments = await listResendSegments();
   const finalByName = new Map(
     finalSegments
-      .map((segment) => [trim(segment?.name), segment])
+      .map((segment) => [normalizeSegmentLookupName(segment?.name), segment])
       .filter(([name]) => Boolean(name)),
   );
 
-  const resolved = {};
-
-  for (const segmentKey of Object.keys(SEGMENT_DEFINITIONS)) {
-    const segment = finalByName.get(getSegmentName(segmentKey));
+  for (const segmentKey of unresolvedKeys) {
+    const segment = finalByName.get(
+      normalizeSegmentLookupName(getSegmentName(segmentKey)),
+    );
     if (!segment?.id) {
-      throw new Error(`Unable to resolve the Resend segment for ${segmentKey}.`);
+      throw new Error(
+        `Unable to resolve the Resend segment for ${segmentKey}. Set RESEND_SEGMENT_${segmentKey.toUpperCase()}_ID to an existing Resend segment ID or create a segment named "${getSegmentName(segmentKey)}" in Resend.`,
+      );
     }
 
     resolved[segmentKey] = segment;
@@ -941,7 +1009,7 @@ async function syncSubmissionPayload(context, payload) {
     ]),
   ]);
 
-  const registrationKind = normalizeRegistrationKind(form.kind);
+  const registrationKind = resolveRegistrationKindFromForm(form);
   if (!registrationKind) {
     log(`Skipping contact sync because form ${formId} has an unsupported kind.`);
     return { ok: true, skipped: "unsupported_form_kind" };
@@ -1085,7 +1153,7 @@ async function backfillExistingSubmissions(context) {
 
   const hasMore = page.documents.length === batchSize;
 
-  return res.json({
+  const summary = {
     ok: true,
     action: "sync-existing-submissions",
     processedCount,
@@ -1094,7 +1162,10 @@ async function backfillExistingSubmissions(context) {
     failedCount,
     nextCursor: hasMore ? nextCursor || null : null,
     hasMore,
-  });
+  };
+
+  log(`BACKFILL_SUMMARY ${JSON.stringify(summary)}`);
+  return res.json(summary);
 }
 
 async function sendBroadcastToSegment(context) {

@@ -11,8 +11,17 @@ const rootEnvPath = resolve(rootDir, ".env");
 const functionId =
   process.env.APPWRITE_FUNCTION_RESEND_CONTACTS_ID?.trim() ||
   "registration_resend_contacts";
-const batchSize = 100;
-const maxBatches = 20;
+const batchSize = Math.max(
+  1,
+  Math.min(25, Number.parseInt(process.argv[2] || process.env.RESEND_BACKFILL_BATCH_SIZE || "5", 10) || 5),
+);
+const maxBatches = Math.max(
+  1,
+  Number.parseInt(process.argv[3] || process.env.RESEND_BACKFILL_MAX_BATCHES || "20", 10) || 20,
+);
+const pollIntervalMs = 1500;
+const executionTimeoutMs = 120000;
+const backfillSummaryLogPrefix = "BACKFILL_SUMMARY ";
 
 function parseEnvFile(filePath) {
   const env = {};
@@ -48,6 +57,10 @@ function getNumber(value) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function parseResponse(responseBody) {
   const normalized = trim(responseBody);
   if (!normalized) {
@@ -68,6 +81,49 @@ function parseResponse(responseBody) {
         : "Unable to parse the Resend contacts function response.",
     );
   }
+}
+
+function parseResponseOrNull(responseBody) {
+  const normalized = trim(responseBody);
+  if (!normalized) {
+    return null;
+  }
+
+  return parseResponse(normalized);
+}
+
+function parseBackfillSummaryFromLogs(logs) {
+  const lines = trim(logs).split(/\r?\n/u).reverse();
+
+  for (const line of lines) {
+    const normalized = trim(line);
+    if (!normalized.startsWith(backfillSummaryLogPrefix)) {
+      continue;
+    }
+
+    return parseResponse(normalized.slice(backfillSummaryLogPrefix.length));
+  }
+
+  return null;
+}
+
+async function waitForExecutionCompletion(params) {
+  const timeoutAt = Date.now() + executionTimeoutMs;
+
+  while (Date.now() < timeoutAt) {
+    const execution = await params.functions.getExecution({
+      functionId: params.functionId,
+      executionId: params.executionId,
+    });
+
+    if (["completed", "failed", "canceled"].includes(execution.status)) {
+      return execution;
+    }
+
+    await delay(pollIntervalMs);
+  }
+
+  throw new Error("Timed out while waiting for the Resend contacts backfill execution to finish.");
 }
 
 const env = parseEnvFile(rootEnvPath);
@@ -94,7 +150,7 @@ let hasMore = false;
 for (let index = 0; index < maxBatches; index += 1) {
   const execution = await functions.createExecution({
     functionId,
-    async: false,
+    async: true,
     method: ExecutionMethod.POST,
     headers: {
       "content-type": "application/json",
@@ -105,17 +161,25 @@ for (let index = 0; index < maxBatches; index += 1) {
       cursorAfter,
     }),
   });
+  const completedExecution = await waitForExecutionCompletion({
+    functions,
+    functionId,
+    executionId: execution.$id,
+  });
 
-  const response = parseResponse(execution.responseBody);
+  const response =
+    parseResponseOrNull(completedExecution.responseBody || "") ||
+    parseBackfillSummaryFromLogs(completedExecution.logs || "");
   const fallbackMessage =
     trim(response?.message) ||
-    trim(execution.errors) ||
-    trim(execution.responseBody) ||
+    trim(completedExecution.errors) ||
+    trim(completedExecution.responseBody) ||
+    trim(completedExecution.logs) ||
     "The Resend contacts function did not return a usable response.";
 
   if (
-    execution.status !== "completed" ||
-    execution.responseStatusCode >= 400 ||
+    completedExecution.status !== "completed" ||
+    completedExecution.responseStatusCode >= 400 ||
     !response?.ok
   ) {
     throw new Error(fallbackMessage);
@@ -149,3 +213,4 @@ console.log(`Synced submissions: ${totalSynced}`);
 console.log(`Skipped submissions: ${totalSkipped}`);
 console.log(`Failed submissions: ${totalFailed}`);
 console.log(`More submissions remaining: ${hasMore && Boolean(cursorAfter) ? "yes" : "no"}`);
+console.log(`Batch size used: ${batchSize}`);

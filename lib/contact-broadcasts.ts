@@ -5,6 +5,9 @@ import { createAppwriteAdminClient } from "@/lib/appwrite";
 import type { RegistrationContactSegmentKey } from "@/lib/registration-contact-segments";
 
 const DEFAULT_RESEND_CONTACTS_FUNCTION_ID = "registration_resend_contacts";
+const BACKFILL_EXECUTION_POLL_INTERVAL_MS = 1500;
+const BACKFILL_EXECUTION_TIMEOUT_MS = 120000;
+const BACKFILL_SUMMARY_LOG_PREFIX = "BACKFILL_SUMMARY ";
 
 type ResendContactsExecutionResponse = {
   ok?: boolean;
@@ -81,6 +84,29 @@ function getNumericValue(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseBackfillSummaryFromLogs(logs: string) {
+  const lines = trim(logs).split(/\r?\n/u).reverse();
+
+  for (const line of lines) {
+    const normalized = trim(line);
+    if (!normalized.startsWith(BACKFILL_SUMMARY_LOG_PREFIX)) {
+      continue;
+    }
+
+    const payload = normalized.slice(BACKFILL_SUMMARY_LOG_PREFIX.length);
+    const parsed = parseExecutionResponseBody<ContactBackfillExecutionResponse>(payload);
+    if (parsed?.ok) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
 async function executeResendContactsFunction<T extends ResendContactsExecutionResponse>(
   body: Record<string, unknown>,
 ) {
@@ -112,6 +138,32 @@ async function executeResendContactsFunction<T extends ResendContactsExecutionRe
   }
 
   return response;
+}
+
+async function waitForExecutionCompletion(params: {
+  functions: Functions;
+  functionId: string;
+  executionId: string;
+  timeoutMs?: number;
+}) {
+  const timeoutAt = Date.now() + (params.timeoutMs ?? BACKFILL_EXECUTION_TIMEOUT_MS);
+
+  while (Date.now() < timeoutAt) {
+    const execution = await params.functions.getExecution({
+      functionId: params.functionId,
+      executionId: params.executionId,
+    });
+
+    if (["completed", "failed", "canceled"].includes(execution.status)) {
+      return execution;
+    }
+
+    await delay(BACKFILL_EXECUTION_POLL_INTERVAL_MS);
+  }
+
+  throw new Error(
+    "Timed out while waiting for the Resend contacts backfill execution to finish.",
+  );
 }
 
 export async function sendRegistrationContactBroadcast(params: {
@@ -148,11 +200,44 @@ export async function syncExistingRegistrationContacts(params?: {
   batchSize?: number;
   cursorAfter?: string | null;
 }) {
-  const response = await executeResendContactsFunction<ContactBackfillExecutionResponse>({
-    action: "sync-existing-submissions",
-    batchSize: params?.batchSize ?? 100,
-    cursorAfter: trim(params?.cursorAfter),
+  const { functionId } = getContactBroadcastConfig();
+  const functions = new Functions(createAppwriteAdminClient());
+  const execution = await functions.createExecution({
+    functionId,
+    async: true,
+    method: ExecutionMethod.POST,
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      action: "sync-existing-submissions",
+      batchSize: params?.batchSize ?? 5,
+      cursorAfter: trim(params?.cursorAfter),
+    }),
   });
+  const completedExecution = await waitForExecutionCompletion({
+    functions,
+    functionId,
+    executionId: execution.$id,
+  });
+  const response =
+    parseExecutionResponseBody<ContactBackfillExecutionResponse>(
+      completedExecution.responseBody,
+    ) || parseBackfillSummaryFromLogs(completedExecution.logs);
+  const fallbackMessage =
+    response?.message ||
+    trim(completedExecution.errors) ||
+    trim(completedExecution.responseBody) ||
+    trim(completedExecution.logs) ||
+    "The Resend contact function did not return a usable response.";
+
+  if (
+    completedExecution.status !== "completed" ||
+    completedExecution.responseStatusCode >= 400 ||
+    !response?.ok
+  ) {
+    throw new Error(fallbackMessage);
+  }
 
   return {
     processedCount: getNumericValue(response.processedCount),

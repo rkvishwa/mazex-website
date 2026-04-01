@@ -30,7 +30,7 @@ const initialState: AdminContactMailActionState = {
   toastKey: 0,
 };
 const CONTACTS_ADMIN_PATH = "/admin/contacts";
-const BACKFILL_BATCH_SIZE = 100;
+const BACKFILL_BATCH_SIZE = 5;
 const MAX_BACKFILL_BATCHES = 10;
 
 function buildState(

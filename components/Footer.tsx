@@ -40,6 +40,12 @@ const QUICK_LINKS = [
   { label: "Register", href: "/#register" },
 ];
 
+const VALUE_POINTS = [
+  "Hands-on Micromouse design and control sessions",
+  "Guidance from mentors across each workshop phase",
+  "Competition-ready roadmap from basics to race day",
+];
+
 export default function Footer() {
   return (
     <footer className="theme-section relative overflow-hidden border-t border-[#2f2540] pb-0 shadow-[0_-18px_48px_rgba(5,2,8,0.24)]">
@@ -47,12 +53,13 @@ export default function Footer() {
       <div className="pointer-events-none absolute right-[12%] bottom-0 h-72 w-72 rounded-full bg-maze-signal/8 blur-[110px]" />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 border-b border-[#2f2540]/70 py-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:items-start lg:gap-10">
+        <div className="grid grid-cols-1 gap-8 border-b border-[#2f2540]/70 py-8 md:grid-cols-2 md:gap-x-6 md:gap-y-8 xl:grid-cols-12 xl:gap-x-0">
           <motion.div
             initial={{ opacity: 0, y: 28 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
+            className="xl:col-span-4 xl:pr-6"
           >
             <div className="mb-4 flex items-center gap-5">
               <Image
@@ -105,73 +112,95 @@ export default function Footer() {
             </div>
           </motion.div>
 
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-8">
-            <motion.div
-              initial={{ opacity: 0, y: 28 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.05 }}
-            >
-              <h4 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-maze-accent-soft">
-                Quick Links
-              </h4>
-              <div className="grid grid-cols-1 gap-y-2 sm:max-w-sm">
-                {QUICK_LINKS.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="text-sm text-[#b8aacb] transition-colors hover:text-[#f8f2ff]"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 28 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-            >
-              <h4 className="mb-3 text-sm font-bold uppercase tracking-[0.28em] text-maze-accent-soft">
-                Organized By
-              </h4>
-
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-4 sm:gap-x-6">
-                <a
-                  href="https://site.ieee.org/sb-moratuwa/chapters/robotics-and-automation-society/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-56 transition-opacity hover:opacity-80"
-                  aria-label="IEEE Robotics and Automation Society"
+          <motion.div
+            initial={{ opacity: 0, y: 28 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.05 }}
+            className="xl:col-span-2 xl:border-l xl:border-[#2f2540]/60 xl:px-6"
+          >
+            <h4 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-maze-accent-soft">
+              Quick Links
+            </h4>
+            <div className="grid grid-cols-1 gap-y-2">
+              {QUICK_LINKS.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="text-sm text-[#b8aacb] transition-colors hover:text-[#f8f2ff]"
                 >
-                  <Image
-                    src="/images/logos/ieee-ras-white.png"
-                    alt="IEEE RAS Logo"
-                    width={240}
-                    height={100}
-                    className="h-auto w-full object-contain object-left"
-                  />
-                </a>
-                <a
-                  href="https://site.ieee.org/sb-moratuwa/chapters/women-in-engineering/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-52 transition-opacity hover:opacity-80"
-                  aria-label="IEEE Women in Engineering"
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 28 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.08 }}
+            className="xl:col-span-3 xl:border-l xl:border-[#2f2540]/60 xl:px-6"
+          >
+            <h4 className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-maze-accent-soft">
+              Why MazeX
+            </h4>
+            <ul className="space-y-2">
+              {VALUE_POINTS.map((point) => (
+                <li
+                  key={point}
+                  className="relative pl-4 text-sm leading-relaxed text-[#b8aacb] before:absolute before:top-2 before:left-0 before:h-1.5 before:w-1.5 before:rounded-full before:bg-maze-accent/80"
                 >
-                  <Image
-                    src="/images/logos/ieee-wie-white.png"
-                    alt="IEEE WIE Logo"
-                    width={220}
-                    height={90}
-                    className="h-auto w-full object-contain object-left"
-                  />
-                </a>
-              </div>
-            </motion.div>
-          </div>
+                  {point}
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 28 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="xl:col-span-3 xl:border-l xl:border-[#2f2540]/60 xl:pl-6"
+          >
+            <h4 className="mb-3 text-sm font-bold uppercase tracking-[0.28em] text-maze-accent-soft">
+              Organized By
+            </h4>
+
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-4 sm:gap-x-6">
+              <a
+                href="https://site.ieee.org/sb-moratuwa/chapters/robotics-and-automation-society/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-56 max-w-full transition-opacity hover:opacity-80"
+                aria-label="IEEE Robotics and Automation Society"
+              >
+                <Image
+                  src="/images/logos/ieee-ras-white.png"
+                  alt="IEEE RAS Logo"
+                  width={240}
+                  height={100}
+                  className="h-auto w-full object-contain object-left"
+                />
+              </a>
+              <a
+                href="https://site.ieee.org/sb-moratuwa/chapters/women-in-engineering/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-52 max-w-full transition-opacity hover:opacity-80"
+                aria-label="IEEE Women in Engineering"
+              >
+                <Image
+                  src="/images/logos/ieee-wie-white.png"
+                  alt="IEEE WIE Logo"
+                  width={220}
+                  height={90}
+                  className="h-auto w-full object-contain object-left"
+                />
+              </a>
+            </div>
+          </motion.div>
         </div>
 
         <motion.div

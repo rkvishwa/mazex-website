@@ -39,20 +39,20 @@ export default function Footer() {
       <div className="pointer-events-none absolute top-0 left-[18%] h-72 w-72 rounded-full bg-maze-accent/8 blur-[120px]" />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 border-b border-[#2f2540]/70 py-8 md:grid-cols-2 lg:grid-cols-[auto_1fr] lg:gap-28">
+        <div className="grid grid-cols-1 gap-6 border-b border-[#2f2540]/70 py-6 md:grid-cols-2 lg:grid-cols-[auto_1fr] lg:gap-28">
           <motion.div
             initial={{ opacity: 0, y: 28 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <div className="mb-5 flex items-center gap-5">
+            <div className="mb-4 flex items-center gap-5">
               <Image
                 src="/images/brand/logo-white.svg"
                 alt="MazeX Logo"
                 width={140}
                 height={78}
-                className="h-16 w-auto object-contain"
+                className="h-14 w-auto object-contain"
               />
               <a
                 href="https://knurdz.org/"
@@ -66,12 +66,12 @@ export default function Footer() {
                   alt="Powered by Knurdz"
                   width={140}
                   height={78}
-                  className="h-13 w-auto object-contain"
+                  className="h-11 w-auto object-contain"
                 />
               </a>
             </div>
 
-            <p className="mb-6 mt-2 text-[15px] font-normal leading-relaxed text-[#a898bf]">
+            <p className="mb-4 mt-1 text-[14px] font-normal leading-relaxed text-[#a898bf]">
               Micromouse Workshop Series &amp; Competition<br />
               by IEEE RAS &amp; WIE, University of Moratuwa.
             </p>
@@ -88,7 +88,7 @@ export default function Footer() {
                     aria-label={social.label}
                     className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#3a3150] bg-white/3 text-white shadow-[0_10px_24px_rgba(5,2,8,0.18)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-maze-accent/70 hover:bg-white/5"
                   >
-                    <Icon className="h-6 w-6" />
+                    <Icon className="h-5 w-5" />
                   </a>
                 );
               })}
@@ -102,16 +102,16 @@ export default function Footer() {
             transition={{ duration: 0.6, delay: 0.05 }}
             className="lg:border-l lg:border-[#2f2540]/65 lg:pl-28"
           >
-            <h4 className="mb-4 text-[0.8rem] font-bold uppercase tracking-[0.22em] text-maze-accent-soft">
+            <h4 className="mb-3 text-[0.75rem] font-bold uppercase tracking-[0.22em] text-maze-accent-soft">
               Organized By
             </h4>
 
-            <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:gap-12">
+            <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:gap-10">
               <a
                 href="https://site.ieee.org/sb-moratuwa/chapters/robotics-and-automation-society/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-56 max-w-full rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maze-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-maze-bg-soft"
+                className="w-48 max-w-full rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maze-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-maze-bg-soft"
                 aria-label="IEEE Robotics and Automation Society"
               >
                 <Image
@@ -126,7 +126,7 @@ export default function Footer() {
                 href="https://site.ieee.org/sb-moratuwa/chapters/women-in-engineering/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-64 max-w-full rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maze-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-maze-bg-soft"
+                className="w-56 max-w-full rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maze-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-maze-bg-soft"
                 aria-label="IEEE Women in Engineering"
               >
                 <Image
@@ -139,7 +139,7 @@ export default function Footer() {
               </a>
             </div>
 
-            <p className="mt-5 text-sm leading-6 text-[#a898bf]">
+            <p className="mt-4 text-[13.5px] leading-relaxed text-[#a898bf]">
               IEEE Robotics & Automation Society and Women in Engineering at University of Moratuwa dedicated to fostering innovation and technical excellence in robotics.
             </p>
           </motion.div>
@@ -150,12 +150,12 @@ export default function Footer() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.15 }}
-          className="flex flex-col gap-2 py-5 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left"
+          className="flex flex-col gap-2 py-4 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left"
         >
-          <p className="text-base font-semibold text-[#d2c8e0]">
+          <p className="text-[15px] font-semibold text-[#d2c8e0]">
             IEEE Student Branch, University of Moratuwa
           </p>
-          <p className="text-sm text-[#9383aa]">
+          <p className="text-[13px] text-[#9383aa]">
             &copy; 2026 MazeX 1.0 - All rights reserved.
             <span className="mx-2">|</span>
             <Link

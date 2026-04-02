@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useTransform, useSpring, useMotionValue, useInView } from "framer-motion";
+import { motion, useTransform, useMotionValue, useInView, animate } from "framer-motion";
 import { useRef, useEffect } from "react";
 import type { ResolvedWorkshopEvent } from "@/lib/site-event-types";
 
@@ -98,7 +98,7 @@ export default function WorkshopTimeline({
   events: ResolvedWorkshopEvent[];
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(containerRef, { once: true, margin: "-10%" });
+  const isInView = useInView(containerRef, { once: true, margin: "-20%" });
 
   const targetProgress = useMotionValue(0);
   useEffect(() => {
@@ -124,17 +124,21 @@ export default function WorkshopTimeline({
       }
 
       const progress = (2 * activeIndex + 1) / (2 * events.length);
-      targetProgress.set(progress);
+      
+      // Calculate duration based on distance to travel (starting from 0)
+      const distance = Math.abs(progress - 0);
+      const duration = 0.8 + (distance * 2.2); // Adaptive duration: base 0.8s + scaling factor
+
+      // Smoothly animate the target progress with calculated duration
+      animate(targetProgress, progress, {
+        duration: duration,
+        ease: "easeInOut",
+        delay: 0.5, // Small delay so the user sees the start of movement
+      });
     }
   }, [events, isInView, targetProgress]);
 
-  const smoothProgress = useSpring(targetProgress, {
-    stiffness: 80,
-    damping: 30,
-    restDelta: 0.001,
-  });
-
-  const displayProgress = useTransform(smoothProgress, [0, 1], ["0%", "100%"]);
+  const displayProgress = useTransform(targetProgress, [0, 1], ["0%", "100%"]);
 
   return (
     <section
@@ -167,7 +171,7 @@ export default function WorkshopTimeline({
             <div className="absolute top-[10px] left-0 right-0 h-[2px] border-t-2 border-dashed border-[#6B528F] opacity-20" />
             <motion.div
               className="absolute top-[10px] left-0 h-[2.5px] w-full bg-gradient-to-r from-[#6B528F] via-[#D8DEE9] to-[#7A6A96]"
-              style={{ scaleX: smoothProgress, transformOrigin: "left" }}
+              style={{ scaleX: targetProgress, transformOrigin: "left" }}
             />
           </div>
 
@@ -228,7 +232,7 @@ export default function WorkshopTimeline({
 
             <motion.div
               className="absolute top-0 left-[10.5px] h-full w-[3px] bg-gradient-to-b from-[#6B528F] via-[#D8DEE9] to-[#7A6A96]"
-              style={{ scaleY: smoothProgress, transformOrigin: "top" }}
+              style={{ scaleY: targetProgress, transformOrigin: "top" }}
               initial={{ scaleY: 0 }}
             />
 

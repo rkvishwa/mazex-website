@@ -71,10 +71,11 @@ export default function Footer() {
               </a>
             </div>
 
-            <h4 className="mb-3 text-[0.8rem] font-bold uppercase tracking-[0.22em] text-maze-accent-soft">
-              Connect
-            </h4>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
+            <p className="mb-6 mt-2 text-[15px] font-normal leading-relaxed text-[#a898bf]">
+              Micromouse Workshop Series &amp; Competition<br />
+              by IEEE RAS &amp; WIE, University of Moratuwa.
+            </p>
+            <div className="flex flex-wrap items-center gap-4">
               {SOCIAL_LINKS.map((social) => {
                 const Icon = social.icon;
 
@@ -85,9 +86,9 @@ export default function Footer() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={social.label}
-                    className="flex h-11 w-11 items-center justify-center rounded-lg border border-[#3a3150] bg-white/3 text-[#d8cfeb] transition-colors hover:border-maze-accent/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maze-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-maze-bg-soft"
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#3a3150] bg-white/3 text-white shadow-[0_10px_24px_rgba(5,2,8,0.18)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-maze-accent/70 hover:bg-white/5"
                   >
-                    <Icon className="h-4.5 w-4.5" />
+                    <Icon className="h-6 w-6" />
                   </a>
                 );
               })}
@@ -105,12 +106,12 @@ export default function Footer() {
               Organized By
             </h4>
 
-            <div className="grid grid-cols-1 items-center gap-5 sm:grid-cols-2">
+            <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:gap-12">
               <a
                 href="https://site.ieee.org/sb-moratuwa/chapters/robotics-and-automation-society/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-60 max-w-full rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maze-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-maze-bg-soft"
+                className="w-56 max-w-full rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maze-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-maze-bg-soft"
                 aria-label="IEEE Robotics and Automation Society"
               >
                 <Image
@@ -125,14 +126,14 @@ export default function Footer() {
                 href="https://site.ieee.org/sb-moratuwa/chapters/women-in-engineering/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-60 max-w-full rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maze-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-maze-bg-soft"
+                className="w-64 max-w-full rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maze-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-maze-bg-soft"
                 aria-label="IEEE Women in Engineering"
               >
                 <Image
                   src="/images/logos/ieee-wie-white.png"
                   alt="IEEE WIE Logo"
-                  width={220}
-                  height={90}
+                  width={256}
+                  height={104}
                   className="h-auto w-full object-contain object-left"
                 />
               </a>

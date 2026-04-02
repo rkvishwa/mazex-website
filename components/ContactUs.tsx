@@ -110,7 +110,7 @@ const Hexagon = ({
     />
     <div
       className={`relative h-full w-full transition-all duration-500 pointer-events-auto ${
-        !isCenter ? "group-hover:-translate-y-2" : ""
+        !isCenter ? "group-hover:-translate-y-2" : "cursor-pointer"
       }`}
       style={{
         clipPath:
@@ -177,7 +177,7 @@ export default function ContactUs() {
           {/* CENTER HUB */}
           <a
             href="mailto:mazex@knurdz.org"
-            className="lg:absolute lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 w-full max-w-[240px] z-30 order-first lg:order-none cursor-pointer"
+            className="lg:absolute lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 w-full max-w-[240px] z-30 order-first lg:order-none pointer-events-none"
           >
             <Hexagon isCenter>
               <div className="flex flex-col items-center">
@@ -212,7 +212,7 @@ export default function ContactUs() {
             return (
               <div
                 key={member.email}
-                className="w-full max-w-[240px] lg:absolute lg:top-1/2 lg:left-1/2"
+                className="w-full max-w-[240px] lg:absolute lg:top-1/2 lg:left-1/2 pointer-events-none"
                 style={
                   {
                     "--tx": `${pos.x}px`,

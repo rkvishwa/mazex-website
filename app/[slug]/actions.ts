@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { AppwriteConfigError } from "@/lib/appwrite";
 import {
   attachUniqueValueReservationsToSubmission,
@@ -66,25 +65,6 @@ function getSerializedFieldRecord(
   return fieldsRecord;
 }
 
-async function isSameOriginSubmission() {
-  const requestHeaders = await headers();
-  const origin = requestHeaders.get("origin");
-  if (!origin) return true;
-
-  const hostHeader = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
-  const protocolHeader = requestHeaders.get("x-forwarded-proto");
-  if (!hostHeader) return false;
-
-  try {
-    const host = hostHeader.split(",")[0].trim().split(":")[0];
-    const protocol = protocolHeader ? protocolHeader.split(",")[0].trim() : null;
-    
-    const requestOrigin = new URL(origin);
-    return requestOrigin.hostname === host && (!protocol || requestOrigin.protocol === `${protocol}:`);
-  } catch {
-    return false;
-  }
-}
 
 function getTotalUploadBytes(records: Array<Record<string, SubmissionAnswerValue>>) {
   let total = 0;
@@ -128,14 +108,6 @@ export async function submitRegistrationAction(
     );
   }
 
-  if (!(await isSameOriginSubmission())) {
-    return buildState(
-      "error",
-      "This submission could not be verified. Please refresh and try again.",
-      empty,
-      fieldsRecord,
-    );
-  }
 
   const formIdValue = formData.get("formId");
   const formId = typeof formIdValue === "string" ? formIdValue.trim() : "";

@@ -8,7 +8,7 @@ const DEFAULT_SPREADSHEET_TITLE = "MazeX Registrations";
 const GOOGLE_OAUTH_SCOPES = [
   "openid",
   "email",
-  "https://www.googleapis.com/auth/spreadsheets",
+  "https://www.googleapis.com/auth/drive.file",
 ];
 const GOOGLE_SHEETS_API_BASE_URL = "https://sheets.googleapis.com/v4";
 const GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";

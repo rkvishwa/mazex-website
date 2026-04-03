@@ -60,6 +60,21 @@ const containerVariants: Variants = {
   },
 };
 
+const mobileCardVariants: Variants = {
+  hidden: {
+    opacity: 0,
+    scale: 0.7,
+  },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: {
+      duration: 1.2,
+      ease: [0.25, 0.46, 0.45, 0.94], // Smooth cubic-bezier easing
+    },
+  },
+};
+
 const hexVariants: Variants = {
   hidden: (custom) => ({
     opacity: 0,
@@ -140,8 +155,7 @@ const Hexagon = ({
 );
 
 const MobileContactCard = ({ member }: { member: (typeof TEAM_MEMBERS)[0] }) => (
-  <motion.div
-    variants={hexVariants}
+  <div
     className="theme-card-soft group relative flex items-center gap-[1rem] p-[1.25rem] transition-all duration-300 hover:border-[#A855F7]/40 w-full"
   >
     {/* Card Glow Effect */}
@@ -185,7 +199,7 @@ const MobileContactCard = ({ member }: { member: (typeof TEAM_MEMBERS)[0] }) => 
         </a>
       </div>
     </div>
-  </motion.div>
+  </div>
 );
 
 export default function ContactUs() {
@@ -336,7 +350,9 @@ export default function ContactUs() {
             {/* Mobile Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-[1rem] w-full max-w-[40rem]">
               {TEAM_MEMBERS.map((member) => (
-                <MobileContactCard key={member.email} member={member} />
+                <motion.div key={member.email} variants={mobileCardVariants}>
+                  <MobileContactCard member={member} />
+                </motion.div>
               ))}
             </div>
 

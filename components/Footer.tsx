@@ -39,21 +39,21 @@ export default function Footer() {
       <div className="pointer-events-none absolute top-0 left-[18%] h-72 w-72 rounded-full bg-maze-accent/8 blur-[120px]" />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 border-b border-[#2f2540]/70 py-8 md:grid-cols-2 lg:grid-cols-12 lg:gap-8">
+        <div className="grid grid-cols-1 gap-6 border-b border-[#2f2540]/70 py-6 md:grid-cols-2 lg:grid-cols-[auto_1fr] lg:gap-32">
           <motion.div
             initial={{ opacity: 0, y: 28 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="lg:col-span-5 text-center lg:text-left"
+            className="text-center lg:text-left"
           >
-            <div className="mb-5 flex flex-wrap items-center justify-center lg:justify-start gap-5">
+            <div className="mb-4 flex flex-wrap items-center justify-center lg:justify-start gap-5">
               <Image
                 src="/images/brand/logo-white.svg"
                 alt="MazeX Logo"
                 width={140}
                 height={78}
-                className="h-16 w-auto object-contain"
+                className="h-14 w-auto object-contain"
               />
               <a
                 href="https://knurdz.org/"
@@ -67,7 +67,7 @@ export default function Footer() {
                   alt="Powered by Knurdz"
                   width={140}
                   height={78}
-                  className="h-13 w-auto object-contain"
+                  className="h-11 w-auto object-contain"
                 />
               </a>
             </div>
@@ -100,9 +100,9 @@ export default function Footer() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.05 }}
-            className="lg:col-span-7 lg:border-l lg:border-[#2f2540]/65 lg:pl-8 text-center lg:text-left"
+            className="lg:border-l lg:border-[#2f2540]/65 lg:pl-32 text-center lg:text-left"
           >
-            <h4 className="mb-4 text-[0.8rem] font-bold uppercase tracking-[0.22em] text-maze-accent-soft hidden lg:block">
+            <h4 className="mb-3 text-[0.75rem] font-bold uppercase tracking-[0.22em] text-maze-accent-soft hidden lg:block">
               Organized By
             </h4>
 
@@ -129,14 +129,14 @@ export default function Footer() {
                 href="https://site.ieee.org/sb-moratuwa/chapters/women-in-engineering/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-60 max-w-full mx-auto lg:mx-0 rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maze-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-maze-bg-soft"
+                className="w-[300px] lg:-translate-x-8 max-w-full mx-auto lg:mx-0 rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maze-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-maze-bg-soft"
                 aria-label="IEEE Women in Engineering"
               >
                 <Image
                   src="/images/logos/ieee-wie-white.png"
                   alt="IEEE WIE Logo"
-                  width={220}
-                  height={90}
+                  width={240}
+                  height={100}
                   className="h-auto w-full object-contain lg:object-left"
                 />
               </a>

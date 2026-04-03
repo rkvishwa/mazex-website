@@ -190,11 +190,11 @@ export default function HashScrollManager() {
     };
 
     const handleHashChange = () => {
-      scheduleScroll(window.location.hash, "smooth");
+      scheduleScroll(window.location.hash, "smooth", true);
     };
 
     const handlePopState = () => {
-      scheduleScroll(window.location.hash, "auto");
+      scheduleScroll(window.location.hash, "auto", true);
     };
 
     const handleResize = () => {
@@ -234,7 +234,7 @@ export default function HashScrollManager() {
       // Drop the hash cleanly without overriding the natively restored scroll position
       window.history.replaceState(null, "", cleanUrl);
     } else if (window.location.hash) {
-      scheduleScroll(window.location.hash, "auto");
+      scheduleScroll(window.location.hash, "auto", true);
     }
 
     return () => {

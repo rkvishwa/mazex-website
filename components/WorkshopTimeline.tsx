@@ -168,19 +168,12 @@ export default function WorkshopTimeline({
 
         <div className="hidden lg:block relative w-full h-[600px] mt-12 mx-auto">
           <div className="absolute top-1/2 left-4 right-4 h-[24px] -translate-y-1/2 overflow-hidden rounded-full border-y-[1.5px] border-[#6B528F]/25 bg-[#0A1224] shadow-[0_0_18px_rgba(107,82,143,0.18)]">
-            <div className="absolute top-[10px] left-0 right-0 h-[2px] border-t-2 border-dashed border-[#6B528F] opacity-20" />
+            <div className="absolute top-1/2 left-0 right-0 h-[2px] -translate-y-1/2 border-t-[2px] border-dashed border-[#6B528F] opacity-20" />
             <motion.div
-              className="absolute top-[10px] left-0 h-[2.5px] w-full bg-gradient-to-r from-[#6B528F] via-[#D8DEE9] to-[#7A6A96]"
+              className="absolute top-1/2 left-0 h-[3px] -translate-y-1/2 w-full bg-gradient-to-r from-[#6B528F] via-[#D8DEE9] to-[#7A6A96]"
               style={{ scaleX: targetProgress, transformOrigin: "left" }}
             />
           </div>
-
-          <motion.div
-            style={{ left: displayProgress }}
-            className="absolute top-1/2 z-40 -translate-x-1/2 -translate-y-1/2 pointer-events-none drop-shadow-[0_0_12px_rgba(107,82,143,0.4)]"
-          >
-            <MicromouseRobot />
-          </motion.div>
 
           <div className="absolute inset-0 grid grid-cols-4 gap-4 px-4 w-full">
             {events.map((event, index) => {
@@ -189,11 +182,11 @@ export default function WorkshopTimeline({
               return (
                 <div key={event.key} className="relative flex h-full w-full flex-col items-center justify-center">
                   <motion.div
-                    initial={{ scale: 0, opacity: 0 }}
-                    whileInView={{ scale: 1, opacity: 1 }}
+                    initial={{ scale: 0, opacity: 0, x: "-50%", y: "-50%" }}
+                    whileInView={{ scale: 1, opacity: 1, x: "-50%", y: "-50%" }}
                     viewport={{ once: true, margin: "-50px" }}
                     transition={{ type: "spring", stiffness: 300, damping: 20, delay: index * 0.15 + 0.2 }}
-                    className="absolute top-1/2 left-1/2 z-30 -translate-x-1/2 -translate-y-1/2"
+                    className="absolute top-1/2 left-1/2 z-30 hover:z-40"
                   >
                     <WorkshopPinMarker />
                   </motion.div>
@@ -214,7 +207,7 @@ export default function WorkshopTimeline({
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.6, delay: index * 0.15 + 0.5 }}
-                    className={`absolute z-20 w-[100%] min-w-[280px] max-w-[340px] ${
+                    className={`absolute left-1/2 -translate-x-1/2 z-20 w-[100%] min-w-[280px] max-w-[340px] ${
                       isTop ? "bottom-[calc(50%+65px)]" : "top-[calc(50%+65px)]"
                     }`}
                   >
@@ -224,47 +217,50 @@ export default function WorkshopTimeline({
               );
             })}
           </div>
+
+          <motion.div
+            style={{ left: displayProgress }}
+            className="absolute top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 pointer-events-none drop-shadow-[0_0_12px_rgba(107,82,143,0.6)]"
+          >
+            <MicromouseRobot />
+          </motion.div>
         </div>
 
         <div className="relative mt-20 w-full px-2 pb-8 sm:px-4 md:mt-32 lg:hidden">
-          <div className="absolute top-0 bottom-0 left-[36px] w-[24px] -translate-x-1/2 overflow-hidden rounded-full border-x-[1.5px] border-[#6B528F]/25 bg-[#0A1224] shadow-[0_0_18px_rgba(107,82,143,0.18)] sm:left-[44px]">
-            <div className="absolute top-0 bottom-0 left-[10.5px] w-[2px] border-l-2 border-dashed border-[#6B528F] opacity-20" />
-
-            <motion.div
-              className="absolute top-0 left-[10.5px] h-full w-[3px] bg-gradient-to-b from-[#6B528F] via-[#D8DEE9] to-[#7A6A96]"
-              style={{ scaleY: targetProgress, transformOrigin: "top" }}
-              initial={{ scaleY: 0 }}
-            />
-
-            <motion.div
-              style={{ top: displayProgress }}
-              className="absolute left-[12px] z-40 -translate-x-1/2 pointer-events-none drop-shadow-[0_0_12px_rgba(107,82,143,0.4)]"
-            >
-              <div className="rotate-90">
-                <MicromouseRobot />
-              </div>
-            </motion.div>
+          
+          <div className="absolute left-0 top-0 bottom-0 z-0 w-[72px] pointer-events-none sm:w-[88px]">
+            <div className="absolute left-1/2 top-0 bottom-0 w-[24px] -translate-x-1/2 overflow-hidden rounded-full border-x-[1.5px] border-[#6B528F]/25 bg-[#0A1224] shadow-[0_0_18px_rgba(107,82,143,0.18)]">
+              <div className="absolute left-1/2 top-0 bottom-0 w-[2px] -translate-x-1/2 border-l-[2px] border-dashed border-[#6B528F] opacity-20" />
+              <motion.div
+                className="absolute left-1/2 top-0 h-full w-[3px] -translate-x-1/2 bg-gradient-to-b from-[#6B528F] via-[#D8DEE9] to-[#7A6A96]"
+                style={{ scaleY: targetProgress, transformOrigin: "top" }}
+                initial={{ scaleY: 0 }}
+              />
+            </div>
           </div>
 
           <div className="relative z-10 flex flex-col gap-12 pt-8 pb-8 sm:gap-16">
             {events.map((event, index) => (
-              <div key={event.key} className="relative z-10 pr-2 pl-[80px] sm:pl-[100px]">
-                <motion.div
-                  initial={{ scale: 0, opacity: 0 }}
-                  whileInView={{ scale: 1, opacity: 1 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20, delay: index * 0.1 }}
-                  className="absolute left-[36px] top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 sm:left-[44px]"
-                >
-                  <WorkshopPinMarker />
-                </motion.div>
+              <div key={event.key} className="relative z-10 pl-[72px] pr-2 sm:pl-[88px]">
+                
+                <div className="absolute left-0 top-1/2 z-30 w-[72px] sm:w-[88px] -translate-y-1/2">
+                  <motion.div
+                    initial={{ scale: 0, opacity: 0, x: "-50%", y: "-50%" }}
+                    whileInView={{ scale: 1, opacity: 1, x: "-50%", y: "-50%" }}
+                    viewport={{ once: true, margin: "-50px" }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20, delay: index * 0.1 }}
+                    className="absolute left-1/2 top-1/2 hover:z-40"
+                  >
+                    <WorkshopPinMarker />
+                  </motion.div>
+                </div>
 
                 <motion.div
                   initial={{ scaleX: 0 }}
                   whileInView={{ scaleX: 1 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: index * 0.1 + 0.2 }}
-                  className="absolute left-[54px] top-1/2 z-[-1] w-[24px] origin-left -translate-y-1/2 border-t-2 border-dashed border-[#6B528F] opacity-60 sm:left-[62px] sm:w-[32px]"
+                  className="absolute left-[36px] top-1/2 z-[-1] w-[36px] origin-left -translate-y-1/2 border-t-2 border-dashed border-[#6B528F] opacity-60 sm:left-[44px] sm:w-[44px]"
                 />
 
                 <motion.div
@@ -278,6 +274,17 @@ export default function WorkshopTimeline({
                 </motion.div>
               </div>
             ))}
+          </div>
+
+          <div className="absolute left-0 top-0 bottom-0 z-50 w-[72px] pointer-events-none sm:w-[88px]">
+            <motion.div
+              style={{ top: displayProgress }}
+              className="absolute left-1/2 -translate-x-1/2 drop-shadow-[0_0_12px_rgba(107,82,143,0.6)]"
+            >
+              <div className="rotate-90">
+                <MicromouseRobot />
+              </div>
+            </motion.div>
           </div>
         </div>
       </div>

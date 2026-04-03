@@ -45,7 +45,7 @@ export default function Hero() {
               className="mb-4 text-5xl font-bold uppercase leading-[0.98] tracking-tight text-[#F8FAFC] sm:text-6xl md:text-7xl lg:text-8xl xl:text-[96px]"
             >
               <span className="inline-block text-[#F8FAFC]">Maze</span>
-              <span className="inline-block ml-5 text-[7.5rem] text-[#F8FAFC]">X</span>
+              <span className="inline-block ml-[0.2em] text-[1.5em] leading-none text-[#F8FAFC]">X</span>
               <span className="gradient-text animate-shimmer block">1.0</span>
             </motion.h1>
 
@@ -100,7 +100,15 @@ export default function Hero() {
           >
             <div className="theme-card p-4 sm:p-5">
               <div className="border border-[#1b243b] bg-[#040811]/95 p-4 sm:p-6">
-                <div className="w-[300px] h-[300px] sm:w-[360px] sm:h-[360px] md:w-[400px] md:h-[400px] lg:w-[460px] lg:h-[460px] xl:w-[500px] xl:h-[500px]">
+                <div
+                  className="w-full"
+                  style={{
+                    maxWidth: "500px",
+                    aspectRatio: "1 / 1",
+                    boxSizing: "border-box",
+                    overflow: "hidden",
+                  }}
+                >
                   <MazeAnimation
                     size={500}
                     className="w-full h-full"

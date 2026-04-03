@@ -572,261 +572,288 @@ export default function MazeAnimation({
   return (
     <div
       ref={containerRef}
-      className={`relative flex items-center justify-center ${className}`}
+      className={`relative ${className}`}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
+        boxSizing: "border-box",
+        padding: "1rem", // Added breathing room as requested
+        width: "100%",
+        height: "100%",
+      }}
     >
       {interactive && statusMessage ? (
-        <div className="pointer-events-none absolute -top-6 left-1/2 z-20 flex w-full -translate-x-1/2 justify-center px-3 sm:-top-7">
+        <div className="pointer-events-none absolute -top-2 left-1/2 z-20 flex w-full -translate-x-1/2 justify-center px-3 sm:-top-7">
           <div className="max-w-[calc(100%-1.5rem)] rounded-full border border-rose-400/40 bg-rose-950/70 px-4 py-2 text-center text-[0.6875rem] font-semibold uppercase tracking-[0.18em] text-rose-100 shadow-[0_0_1.5rem_rgba(251,113,133,0.14)] backdrop-blur-sm sm:text-xs">
             {statusMessage}
           </div>
         </div>
       ) : null}
 
-      <svg
-        width={size}
-        height={size}
-        viewBox={`0 0 ${size} ${size}`}
-        className="relative z-10 block h-full w-full"
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "600px",
+          aspectRatio: "1 / 1",
+          position: "relative",
+          display: "flex", // Centering SVG inside its own wrapper
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
-        <defs>
-          <filter id={wallGlowId} x="-10%" y="-10%" width="120%" height="120%">
-            <feGaussianBlur stdDeviation="1" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
+        <svg
+          viewBox={`0 0 ${size} ${size}`}
+          className="relative z-10 block"
+          style={{
+            width: "100%",
+            height: "100%",
+            maxWidth: "100%",
+            maxHeight: "100%",
+            flexShrink: 0,
+          }}
+        >
+          <defs>
+            <filter id={wallGlowId} x="-10%" y="-10%" width="120%" height="120%">
+              <feGaussianBlur stdDeviation="1" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
 
-          <filter id={robotGlowId} x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="1.5" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
+            <filter id={robotGlowId} x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="1.5" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
 
-          <radialGradient id={robotGradId} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#F8FAFC" />
-            <stop offset="50%" stopColor="#C084FC" />
-            <stop offset="100%" stopColor="#818CF8" />
-          </radialGradient>
+            <radialGradient id={robotGradId} cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#F8FAFC" />
+              <stop offset="50%" stopColor="#C084FC" />
+              <stop offset="100%" stopColor="#818CF8" />
+            </radialGradient>
 
-          <clipPath id={passageClipId}>
-            {grid.map((row, rowIndex) =>
-              row.map((cell, colIndex) =>
-                cell === 0 ? (
-                  <rect
-                    key={`pc-${rowIndex}-${colIndex}`}
-                    x={colIndex * cellSize}
-                    y={rowIndex * cellSize}
-                    width={cellSize}
-                    height={cellSize}
-                  />
-                ) : null
+            <clipPath id={passageClipId}>
+              {grid.map((row, rowIndex) =>
+                row.map((cell, colIndex) =>
+                  cell === 0 ? (
+                    <rect
+                      key={`pc-${rowIndex}-${colIndex}`}
+                      x={colIndex * cellSize}
+                      y={rowIndex * cellSize}
+                      width={cellSize}
+                      height={cellSize}
+                    />
+                  ) : null
+                )
+              )}
+            </clipPath>
+          </defs>
+
+          {grid.map((row, rowIndex) =>
+            row.map((cell, colIndex) => {
+              return (
+                <rect
+                  key={`g-${rowIndex}-${colIndex}`}
+                  x={colIndex * cellSize}
+                  y={rowIndex * cellSize}
+                  width={cellSize}
+                  height={cellSize}
+                  fill={cell === 1 ? "#0F1730" : "#050915"}
+                  stroke={cell === 1 ? "#1B2440" : "#11182D"}
+                  strokeWidth={cell === 1 ? "0.5" : "0.2"}
+                  pointerEvents="none"
+                />
+              );
+            })
+          )}
+
+          {interactive
+            ? grid.map((row, rowIndex) =>
+                row.map((_, colIndex) => {
+                  const mazeCell: Cell = [rowIndex, colIndex];
+
+                  return (
+                    <rect
+                      key={`hit-${rowIndex}-${colIndex}`}
+                      x={colIndex * cellSize}
+                      y={rowIndex * cellSize}
+                      width={cellSize}
+                      height={cellSize}
+                      fill="transparent"
+                      pointerEvents="all"
+                      onClick={() => handleCellToggle(rowIndex, colIndex)}
+                      style={{
+                        cursor: sameCell(mazeCell, currentCell) ? "default" : "pointer",
+                      }}
+                    />
+                  );
+                })
               )
-            )}
-          </clipPath>
-        </defs>
+            : null}
 
-        {grid.map((row, rowIndex) =>
-          row.map((cell, colIndex) => {
-            return (
-              <rect
-                key={`g-${rowIndex}-${colIndex}`}
-                x={colIndex * cellSize}
-                y={rowIndex * cellSize}
-                width={cellSize}
-                height={cellSize}
-                fill={cell === 1 ? "#0F1730" : "#050915"}
-                stroke={cell === 1 ? "#1B2440" : "#11182D"}
-                strokeWidth={cell === 1 ? "0.5" : "0.2"}
-                pointerEvents="none"
-              />
-            );
-          })
-        )}
+          {grid.map((row, rowIndex) =>
+            row.map((cell, colIndex) => {
+              if (cell !== 1) {
+                return null;
+              }
 
-        {interactive
-          ? grid.map((row, rowIndex) =>
-              row.map((_, colIndex) => {
-                const mazeCell: Cell = [rowIndex, colIndex];
+              const segments: React.JSX.Element[] = [];
 
-                return (
-                  <rect
-                    key={`hit-${rowIndex}-${colIndex}`}
-                    x={colIndex * cellSize}
-                    y={rowIndex * cellSize}
-                    width={cellSize}
-                    height={cellSize}
-                    fill="transparent"
-                    pointerEvents="all"
-                    onClick={() => handleCellToggle(rowIndex, colIndex)}
-                    style={{
-                      cursor: sameCell(mazeCell, currentCell) ? "default" : "pointer",
-                    }}
+              if (rowIndex > 0 && grid[rowIndex - 1][colIndex] === 0) {
+                segments.push(
+                  <line
+                    key={`et-${rowIndex}-${colIndex}`}
+                    x1={colIndex * cellSize}
+                    y1={rowIndex * cellSize}
+                    x2={(colIndex + 1) * cellSize}
+                    y2={rowIndex * cellSize}
+                    stroke="#A855F7"
+                    strokeWidth="1.5"
+                    filter={`url(#${wallGlowId})`}
+                    pointerEvents="none"
                   />
                 );
-              })
-            )
-          : null}
+              }
 
-        {grid.map((row, rowIndex) =>
-          row.map((cell, colIndex) => {
-            if (cell !== 1) {
-              return null;
-            }
+              if (rowIndex < GRID_ROWS - 1 && grid[rowIndex + 1][colIndex] === 0) {
+                segments.push(
+                  <line
+                    key={`eb-${rowIndex}-${colIndex}`}
+                    x1={colIndex * cellSize}
+                    y1={(rowIndex + 1) * cellSize}
+                    x2={(colIndex + 1) * cellSize}
+                    y2={(rowIndex + 1) * cellSize}
+                    stroke="#A855F7"
+                    strokeWidth="1.5"
+                    filter={`url(#${wallGlowId})`}
+                    pointerEvents="none"
+                  />
+                );
+              }
 
-            const segments: React.JSX.Element[] = [];
+              if (colIndex > 0 && grid[rowIndex][colIndex - 1] === 0) {
+                segments.push(
+                  <line
+                    key={`el-${rowIndex}-${colIndex}`}
+                    x1={colIndex * cellSize}
+                    y1={rowIndex * cellSize}
+                    x2={colIndex * cellSize}
+                    y2={(rowIndex + 1) * cellSize}
+                    stroke="#A855F7"
+                    strokeWidth="1.5"
+                    filter={`url(#${wallGlowId})`}
+                    pointerEvents="none"
+                  />
+                );
+              }
 
-            if (rowIndex > 0 && grid[rowIndex - 1][colIndex] === 0) {
-              segments.push(
-                <line
-                  key={`et-${rowIndex}-${colIndex}`}
-                  x1={colIndex * cellSize}
-                  y1={rowIndex * cellSize}
-                  x2={(colIndex + 1) * cellSize}
-                  y2={rowIndex * cellSize}
-                  stroke="#A855F7"
-                  strokeWidth="1.5"
-                  filter={`url(#${wallGlowId})`}
+              if (colIndex < GRID_COLS - 1 && grid[rowIndex][colIndex + 1] === 0) {
+                segments.push(
+                  <line
+                    key={`er-${rowIndex}-${colIndex}`}
+                    x1={(colIndex + 1) * cellSize}
+                    y1={rowIndex * cellSize}
+                    x2={(colIndex + 1) * cellSize}
+                    y2={(rowIndex + 1) * cellSize}
+                    stroke="#A855F7"
+                    strokeWidth="1.5"
+                    filter={`url(#${wallGlowId})`}
+                    pointerEvents="none"
+                  />
+                );
+              }
+
+              return segments;
+            })
+          )}
+
+          {route.length > 1 ? (
+            <polyline
+              points={route
+                .map(([row, col]) => cellCenter(row, col, cellSize))
+                .map((point) => `${point.x},${point.y}`)
+                .join(" ")}
+              fill="none"
+              stroke="#818CF8"
+              strokeWidth="1"
+              opacity="0.12"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              pointerEvents="none"
+            />
+          ) : null}
+
+          {[
+            { id: "start-cell", point: startCell, label: "S", fill: "#A855F7", text: "#C084FC" },
+            { id: "end-cell", point: endCell, label: "E", fill: "#818CF8", text: "#E2E8F0" },
+          ].map(({ id, point, label, fill, text }) => {
+            const markerX = point[1] * cellSize + cellSize * 0.12;
+            const markerY = point[0] * cellSize + cellSize * 0.12;
+            const markerCenterX = point[1] * cellSize + cellSize / 2;
+            const markerCenterY = point[0] * cellSize + cellSize / 2;
+            const isGoal = sameCell(point, endCell);
+
+            return (
+              <React.Fragment key={id}>
+                <rect
+                  x={markerX}
+                  y={markerY}
+                  width={cellSize * 0.76}
+                  height={cellSize * 0.76}
+                  rx={3}
+                  fill={fill}
+                  opacity={isGoal && hasArrived ? 0.34 : 0.24}
                   pointerEvents="none"
                 />
-              );
-            }
-
-            if (rowIndex < GRID_ROWS - 1 && grid[rowIndex + 1][colIndex] === 0) {
-              segments.push(
-                <line
-                  key={`eb-${rowIndex}-${colIndex}`}
-                  x1={colIndex * cellSize}
-                  y1={(rowIndex + 1) * cellSize}
-                  x2={(colIndex + 1) * cellSize}
-                  y2={(rowIndex + 1) * cellSize}
-                  stroke="#A855F7"
-                  strokeWidth="1.5"
-                  filter={`url(#${wallGlowId})`}
+                <text
+                  x={markerCenterX}
+                  y={markerCenterY}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fontSize={Math.max(7, cellSize * 0.38)}
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                  fill={text}
                   pointerEvents="none"
-                />
-              );
-            }
+                >
+                  {label}
+                </text>
+              </React.Fragment>
+            );
+          })}
 
-            if (colIndex > 0 && grid[rowIndex][colIndex - 1] === 0) {
-              segments.push(
-                <line
-                  key={`el-${rowIndex}-${colIndex}`}
-                  x1={colIndex * cellSize}
-                  y1={rowIndex * cellSize}
-                  x2={colIndex * cellSize}
-                  y2={(rowIndex + 1) * cellSize}
-                  stroke="#A855F7"
-                  strokeWidth="1.5"
-                  filter={`url(#${wallGlowId})`}
-                  pointerEvents="none"
-                />
-              );
-            }
+          <g clipPath={`url(#${passageClipId})`} pointerEvents="none">
+            <circle
+              cx={mousePosition.x}
+              cy={mousePosition.y}
+              r={robotRadius * 1.02}
+              fill={`url(#${robotGradId})`}
+              filter={`url(#${robotGlowId})`}
+            />
 
-            if (colIndex < GRID_COLS - 1 && grid[rowIndex][colIndex + 1] === 0) {
-              segments.push(
-                <line
-                  key={`er-${rowIndex}-${colIndex}`}
-                  x1={(colIndex + 1) * cellSize}
-                  y1={rowIndex * cellSize}
-                  x2={(colIndex + 1) * cellSize}
-                  y2={(rowIndex + 1) * cellSize}
-                  stroke="#A855F7"
-                  strokeWidth="1.5"
-                  filter={`url(#${wallGlowId})`}
-                  pointerEvents="none"
-                />
-              );
-            }
+            <line
+              x1={mousePosition.x}
+              y1={mousePosition.y}
+              x2={headX}
+              y2={headY}
+              stroke="#E9D5FF"
+              strokeWidth={Math.max(0.75, robotRadius * 0.24)}
+              strokeLinecap="round"
+              opacity="0.9"
+            />
 
-            return segments;
-          })
-        )}
-
-        {route.length > 1 ? (
-          <polyline
-            points={route
-              .map(([row, col]) => cellCenter(row, col, cellSize))
-              .map((point) => `${point.x},${point.y}`)
-              .join(" ")}
-            fill="none"
-            stroke="#818CF8"
-            strokeWidth="1"
-            opacity="0.12"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            pointerEvents="none"
-          />
-        ) : null}
-
-        {[
-          { id: "start-cell", point: startCell, label: "S", fill: "#A855F7", text: "#C084FC" },
-          { id: "end-cell", point: endCell, label: "E", fill: "#818CF8", text: "#E2E8F0" },
-        ].map(({ id, point, label, fill, text }) => {
-          const markerX = point[1] * cellSize + cellSize * 0.12;
-          const markerY = point[0] * cellSize + cellSize * 0.12;
-          const markerCenterX = point[1] * cellSize + cellSize / 2;
-          const markerCenterY = point[0] * cellSize + cellSize / 2;
-          const isGoal = sameCell(point, endCell);
-
-          return (
-            <React.Fragment key={id}>
-              <rect
-                x={markerX}
-                y={markerY}
-                width={cellSize * 0.76}
-                height={cellSize * 0.76}
-                rx={3}
-                fill={fill}
-                opacity={isGoal && hasArrived ? 0.34 : 0.24}
-                pointerEvents="none"
-              />
-              <text
-                x={markerCenterX}
-                y={markerCenterY}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fontSize={Math.max(7, cellSize * 0.38)}
-                fontFamily="monospace"
-                fontWeight="bold"
-                fill={text}
-                pointerEvents="none"
-              >
-                {label}
-              </text>
-            </React.Fragment>
-          );
-        })}
-
-        <g clipPath={`url(#${passageClipId})`} pointerEvents="none">
-          <circle
-            cx={mousePosition.x}
-            cy={mousePosition.y}
-            r={robotRadius * 1.02}
-            fill={`url(#${robotGradId})`}
-            filter={`url(#${robotGlowId})`}
-          />
-
-          <line
-            x1={mousePosition.x}
-            y1={mousePosition.y}
-            x2={headX}
-            y2={headY}
-            stroke="#E9D5FF"
-            strokeWidth={Math.max(0.75, robotRadius * 0.24)}
-            strokeLinecap="round"
-            opacity="0.9"
-          />
-
-          <circle cx={headX} cy={headY} r={robotRadius * 0.7} fill="#F4ECFF" opacity="0.92" />
-          <circle cx={leftEarX} cy={leftEarY} r={robotRadius * 0.34} fill="#D8B4FE" opacity="0.9" />
-          <circle cx={rightEarX} cy={rightEarY} r={robotRadius * 0.34} fill="#D8B4FE" opacity="0.9" />
-          <circle cx={eyeX} cy={eyeY} r={robotRadius * 0.11} fill="#111827" opacity="0.9" />
-        </g>
-      </svg>
+            <circle cx={headX} cy={headY} r={robotRadius * 0.7} fill="#F4ECFF" opacity="0.92" />
+            <circle cx={leftEarX} cy={leftEarY} r={robotRadius * 0.34} fill="#D8B4FE" opacity="0.9" />
+            <circle cx={rightEarX} cy={rightEarY} r={robotRadius * 0.34} fill="#D8B4FE" opacity="0.9" />
+            <circle cx={eyeX} cy={eyeY} r={robotRadius * 0.11} fill="#111827" opacity="0.9" />
+          </g>
+        </svg>
+      </div>
     </div>
   );
 }

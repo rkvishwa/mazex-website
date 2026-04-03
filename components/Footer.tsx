@@ -45,9 +45,9 @@ export default function Footer() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="lg:col-span-5"
+            className="lg:col-span-5 text-center lg:text-left"
           >
-            <div className="mb-5 flex items-center gap-5">
+            <div className="mb-5 flex flex-wrap items-center justify-center lg:justify-start gap-5">
               <Image
                 src="/images/brand/logo-white.svg"
                 alt="MazeX Logo"
@@ -75,7 +75,7 @@ export default function Footer() {
             <h4 className="mb-3 text-[0.8rem] font-bold uppercase tracking-[0.22em] text-maze-accent-soft">
               Connect
             </h4>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
+            <div className="mt-4 flex flex-wrap items-center justify-center lg:justify-start gap-2">
               {SOCIAL_LINKS.map((social) => {
                 const Icon = social.icon;
 
@@ -100,18 +100,18 @@ export default function Footer() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.05 }}
-            className="lg:col-span-7 lg:border-l lg:border-[#2f2540]/65 lg:pl-8"
+            className="lg:col-span-7 lg:border-l lg:border-[#2f2540]/65 lg:pl-8 text-center lg:text-left"
           >
             <h4 className="mb-4 text-[0.8rem] font-bold uppercase tracking-[0.22em] text-maze-accent-soft">
               Organized By
             </h4>
 
-            <div className="grid grid-cols-1 items-center gap-5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 items-center justify-items-center lg:justify-items-start gap-5 sm:grid-cols-2">
               <a
                 href="https://site.ieee.org/sb-moratuwa/chapters/robotics-and-automation-society/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-60 max-w-full rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maze-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-maze-bg-soft"
+                className="w-60 max-w-full mx-auto lg:mx-0 rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maze-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-maze-bg-soft"
                 aria-label="IEEE Robotics and Automation Society"
               >
                 <Image
@@ -119,14 +119,14 @@ export default function Footer() {
                   alt="IEEE RAS Logo"
                   width={240}
                   height={100}
-                  className="h-auto w-full object-contain object-left"
+                  className="h-auto w-full object-contain lg:object-left"
                 />
               </a>
               <a
                 href="https://site.ieee.org/sb-moratuwa/chapters/women-in-engineering/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-60 max-w-full rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maze-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-maze-bg-soft"
+                className="w-60 max-w-full mx-auto lg:mx-0 rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-maze-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-maze-bg-soft"
                 aria-label="IEEE Women in Engineering"
               >
                 <Image
@@ -134,7 +134,7 @@ export default function Footer() {
                   alt="IEEE WIE Logo"
                   width={220}
                   height={90}
-                  className="h-auto w-full object-contain object-left"
+                  className="h-auto w-full object-contain lg:object-left"
                 />
               </a>
             </div>

@@ -55,7 +55,7 @@ export default function AboutMazeX() {
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            className="hidden lg:grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
           >
             {ABOUT_FEATURES.map((feature, i) => (
               <motion.div

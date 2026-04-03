@@ -31,12 +31,10 @@ export default function WhatIsMicromouse() {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="theme-card w-fit mx-auto p-2"
+            className="theme-card mx-auto w-full max-w-[260px] sm:max-w-[320px] md:max-w-[360px] lg:max-w-[380px] p-2 justify-self-center"
           >
-            <div className="flex items-center justify-center border border-[#1b243b] bg-[#040811]/95 p-3">
-              <div className="w-[280px] h-[280px] sm:w-[320px] sm:h-[320px] md:w-[360px] md:h-[360px] mx-auto">
-                <MazeAnimation size={360} className="w-full h-full" />
-              </div>
+            <div className="flex items-center justify-center border border-[#1b243b] bg-[#040811]/95 p-3 aspect-square">
+              <MazeAnimation size={360} className="w-full h-full" />
             </div>
           </motion.div>
 

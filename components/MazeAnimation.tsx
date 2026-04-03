@@ -579,7 +579,7 @@ export default function MazeAnimation({
         justifyContent: "center",
         overflow: "hidden",
         boxSizing: "border-box",
-        padding: "1rem", // Added breathing room as requested
+        padding: "0", // Removed padding to allow the maze to take up more space as requested
         width: "100%",
         height: "100%",
       }}

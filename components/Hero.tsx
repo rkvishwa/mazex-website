@@ -98,8 +98,8 @@ export default function Hero() {
             transition={{ duration: 0.9, delay: 0.4, ease: "easeOut" }}
             className="flex items-center justify-center"
           >
-            <div className="theme-card p-4 sm:p-5">
-              <div className="border border-[#1b243b] bg-[#040811]/95 p-4 sm:p-6">
+            <div className="theme-card p-2 sm:p-2.5">
+              <div className="bg-[#040811]/95 p-4 sm:p-6">
                 <div
                   className="w-full"
                   style={{

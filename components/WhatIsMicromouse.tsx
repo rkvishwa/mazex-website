@@ -33,7 +33,7 @@ export default function WhatIsMicromouse() {
             transition={{ duration: 0.6 }}
             className="theme-card mx-auto w-full max-w-[260px] sm:max-w-[320px] md:max-w-[360px] lg:max-w-[380px] p-2 justify-self-center"
           >
-            <div className="flex items-center justify-center border border-[#1b243b] bg-[#040811]/95 p-3 aspect-square">
+            <div className="flex items-center justify-center bg-[#040811]/95 p-4 sm:p-5 aspect-square">
               <MazeAnimation size={360} className="w-full h-full" />
             </div>
           </motion.div>

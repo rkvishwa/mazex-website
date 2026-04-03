@@ -13,7 +13,7 @@ export function Skeleton({ className }: { className?: string }) {
 export function GenericCardSkeleton() {
   return (
     <div className="mx-auto w-full max-w-6xl px-4 sm:px-0">
-      <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="rounded-xl border border-zinc-200 bg-white p-4 sm:p-6 md:p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div className="max-w-3xl space-y-4">
           <Skeleton className="h-6 w-24 rounded-md" />
           <Skeleton className="h-8 w-3/4 rounded-md" />
@@ -59,7 +59,7 @@ export function TwoColumnSkeleton() {
 export function DashboardSkeleton() {
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 pb-10">
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 sm:p-8 shadow-sm">
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 px-3 py-5 sm:p-6 md:p-8 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div className="max-w-3xl space-y-4">
              <Skeleton className="h-6 w-32" />
@@ -71,7 +71,7 @@ export function DashboardSkeleton() {
              <Skeleton className="h-10 w-36" />
           </div>
         </div>
-        <div className="mt-8 grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />

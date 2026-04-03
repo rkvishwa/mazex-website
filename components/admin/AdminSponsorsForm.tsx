@@ -277,8 +277,8 @@ export default function AdminSponsorsForm({
         </div>
       ) : null}
 
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 sm:px-0 pb-10">
-        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 pb-10">
+        <div className="rounded-xl border border-zinc-200 bg-white p-4 sm:p-6 md:p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="max-w-3xl">
              <div className="inline-flex items-center rounded-md bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
               Manage Partners
@@ -449,7 +449,7 @@ export default function AdminSponsorsForm({
           </form>
         </div>
 
-        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="rounded-xl border border-zinc-200 bg-white p-4 sm:p-6 md:p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h3 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">

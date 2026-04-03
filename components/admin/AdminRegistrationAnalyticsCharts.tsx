@@ -126,7 +126,7 @@ function ChartCard({
     <section
       className={[
         "rounded-2xl border border-zinc-200 dark:border-zinc-800",
-        "bg-white dark:bg-zinc-900 p-6 shadow-sm",
+        "bg-white dark:bg-zinc-900 px-3 py-5 sm:p-6 md:p-8 shadow-sm",
         className,
       ]
         .filter(Boolean)
@@ -159,7 +159,7 @@ function InsightCard({
   tone?: InsightTone;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 p-4 shadow-sm">
+    <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 px-3 py-4 sm:p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[0.625rem] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
@@ -190,7 +190,7 @@ function ChartEmptyState({
   description: string;
 }) {
   return (
-    <div className="flex min-h-56 flex-col items-center justify-center rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-950/80 px-6 text-center">
+    <div className="flex min-h-56 flex-col items-center justify-center rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-950/80 p-4 sm:px-6 text-center">
       <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
         {title}
       </p>

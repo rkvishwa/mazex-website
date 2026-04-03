@@ -59,42 +59,38 @@ function EventToggle({
   const [enabled, setEnabled] = useState(defaultEnabled);
 
   return (
-    <div className="w-full max-w-sm">
+    <div className="flex shrink-0 items-center gap-3">
       <input type="hidden" name={name} value={enabled ? "on" : "off"} />
-      <div className="flex justify-end">
-        <div className="flex shrink-0 items-center gap-3">
-          <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Enable Event
-          </span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={enabled}
-            aria-label="Enable event"
-            onClick={() => setEnabled((value) => !value)}
-            className={`relative inline-flex h-7 w-12 items-center rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 dark:focus:ring-zinc-200 dark:focus:ring-offset-zinc-900 ${
-              enabled
-                ? "border-zinc-900 bg-zinc-900 dark:border-zinc-100 dark:bg-zinc-100"
-                : "border-zinc-300 bg-zinc-300 dark:border-zinc-600 dark:bg-zinc-700"
-            }`}
-            >
-              <span
-                className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform dark:bg-zinc-950 ${
-                  enabled ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
-            </button>
-          <span
-            className={`text-xs font-semibold uppercase tracking-wide ${
-              enabled
-                ? "text-zinc-900 dark:text-zinc-100"
-                : "text-zinc-500 dark:text-zinc-400"
-            }`}
-          >
-            {enabled ? "Open" : "Close"}
-          </span>
-        </div>
-      </div>
+      <span className="hidden text-xs font-semibold uppercase tracking-wide text-zinc-500 sm:inline-block dark:text-zinc-400">
+        Enable Event
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        aria-label="Enable event"
+        onClick={() => setEnabled((value) => !value)}
+        className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 dark:focus:ring-zinc-200 dark:focus:ring-offset-zinc-900 ${
+          enabled
+            ? "border-zinc-900 bg-zinc-900 dark:border-zinc-100 dark:bg-zinc-100"
+            : "border-zinc-300 bg-zinc-300 dark:border-zinc-600 dark:bg-zinc-700"
+        }`}
+      >
+        <span
+          className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform dark:bg-zinc-950 ${
+            enabled ? "translate-x-6" : "translate-x-1"
+          }`}
+        />
+      </button>
+      <span
+        className={`hidden text-xs font-semibold uppercase tracking-wide sm:inline-block ${
+          enabled
+            ? "text-zinc-900 dark:text-zinc-100"
+            : "text-zinc-500 dark:text-zinc-400"
+        }`}
+      >
+        {enabled ? "Open" : "Close"}
+      </span>
     </div>
   );
 }
@@ -199,22 +195,32 @@ function EventCard({
     <form
       key={`${getEventRenderKey(event)}:${formResetKey}`}
       action={formAction}
-      className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+      className="rounded-xl border border-zinc-200 bg-white px-3 py-5 sm:p-6 md:p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
     >
       <input type="hidden" name="targetEventKey" value={event.key} />
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="max-w-2xl">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-[0.6875rem] font-semibold uppercase tracking-wide text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-              {event.kind === "competition" ? "Competition" : `Workshop ${event.number}`}
-            </span>
-            {event.linkedForm?.status ? <StatusBadge status={event.linkedForm.status} /> : null}
-            {event.linkedFormMissing ? (
-              <span className="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 text-[0.6875rem] font-semibold uppercase tracking-wide text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
-                Linked form unavailable
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-[0.6875rem] font-semibold uppercase tracking-wide text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                {event.kind === "competition" ? "Competition" : `Workshop ${event.number}`}
               </span>
-            ) : null}
+              {event.linkedForm?.status ? <StatusBadge status={event.linkedForm.status} /> : null}
+              {event.linkedFormMissing ? (
+                <span className="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-1 text-[0.6875rem] font-semibold uppercase tracking-wide text-rose-800 dark:bg-rose-500/20 dark:text-rose-300">
+                  Linked form unavailable
+                </span>
+              ) : null}
+            </div>
+
+            {/* Event toggle on mobile */}
+            <div className="lg:hidden">
+              <EventToggle
+                name={`${event.key}__enabled`}
+                defaultEnabled={event.enabled}
+              />
+            </div>
           </div>
 
           <h2 className="mt-4 text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
@@ -228,19 +234,19 @@ function EventCard({
               : event.description}
           </p>
           {event.linkedForm ? (
-            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-zinc-600 dark:text-zinc-400">
-              <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 dark:border-zinc-700 dark:bg-zinc-950">
-                <Link2 className="h-4 w-4" />
-                {event.linkedForm.title}
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 md:gap-6">
+              <span className="inline-flex items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400">
+                <Link2 className="h-4 w-4 shrink-0" />
+                <span className="truncate">{event.linkedForm.title}</span>
               </span>
               <a
                 href={`/${event.linkedForm.slug}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 font-medium text-zinc-900 hover:text-zinc-700 dark:text-zinc-100 dark:hover:text-zinc-300"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-900 transition hover:text-zinc-700 dark:text-zinc-100 dark:hover:text-zinc-300"
               >
                 /{event.linkedForm.slug}
-                <ExternalLink className="h-4 w-4" />
+                <ExternalLink className="h-4 w-4 shrink-0" />
               </a>
             </div>
           ) : event.linkedFormMissing ? (
@@ -250,10 +256,13 @@ function EventCard({
           ) : null}
         </div>
 
-        <EventToggle
-          name={`${event.key}__enabled`}
-          defaultEnabled={event.enabled}
-        />
+        {/* Event toggle on desktop */}
+        <div className="hidden lg:block">
+          <EventToggle
+            name={`${event.key}__enabled`}
+            defaultEnabled={event.enabled}
+          />
+        </div>
       </div>
 
       <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -423,8 +432,8 @@ export default function AdminEventsForm({
         />
       ) : null}
 
-      <div className="mx-auto w-full max-w-6xl px-4 sm:px-0">
-        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mx-auto w-full max-w-6xl">
+        <div className="rounded-xl border border-zinc-200 bg-white px-3 py-5 sm:p-6 md:p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
               <CalendarDays className="h-3.5 w-3.5" />

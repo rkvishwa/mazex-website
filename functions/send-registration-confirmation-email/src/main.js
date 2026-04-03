@@ -258,7 +258,6 @@ function buildEmail(
   const defaultText = [
     "Your MazeX registration was received successfully.",
     formLine,
-    "Our team will contact you if any additional steps are required.",
   ]
     .filter(Boolean)
     .join("\n");

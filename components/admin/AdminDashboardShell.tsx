@@ -75,8 +75,8 @@ export default function AdminDashboardShell({
       {/* Mobile Sidebar Overlay */}
       <div
         className={cn(
-          "fixed inset-0 z-40 lg:hidden bg-zinc-950/50 backdrop-blur-sm transition-opacity",
-          mobileSidebarOpen ? "opacity-100 block" : "opacity-0 hidden"
+          "fixed inset-0 z-40 lg:hidden bg-zinc-950/50 backdrop-blur-sm transition-opacity duration-300",
+          mobileSidebarOpen ? "opacity-100 visible pointer-events-auto" : "opacity-0 invisible pointer-events-none"
         )}
       >
         <button
@@ -91,7 +91,7 @@ export default function AdminDashboardShell({
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex flex-col bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 transition-all duration-300 lg:static lg:h-screen lg:shrink-0 lg:translate-x-0",
           mobileSidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full",
-          sidebarCollapsed ? "lg:w-20" : "w-72 lg:w-64"
+          sidebarCollapsed ? "lg:w-20" : "w-[16rem]"
         )}
       >
         <div className={cn("flex items-center h-16 border-b border-zinc-200 dark:border-zinc-800", sidebarCollapsed ? "justify-between px-6 lg:justify-center lg:px-0" : "justify-between px-6")}>
@@ -222,7 +222,7 @@ export default function AdminDashboardShell({
           </header>
 
           {/* Page Content */}
-          <main className="flex-1 p-6 md:p-8 lg:p-10 max-w-7xl mx-auto w-full">
+          <main className="flex-1 px-3 py-5 sm:p-6 md:p-8 lg:p-10 max-w-7xl mx-auto w-full">
             {children}
           </main>
         </div>

@@ -9,6 +9,7 @@ import { Reorder } from "framer-motion";
 import {
   CheckCircle2, ExternalLink, FileImage, GripHorizontal,
   Loader2, Plus, Settings2, ShieldAlert, Trash2, X, ChevronDown,
+  CheckSquare, Fingerprint, UserSquare2
 } from "lucide-react";
 import FormSelectorDropdown from "@/components/admin/FormSelectorDropdown";
 import {
@@ -162,7 +163,7 @@ function CreateFormPanel({ formCount, onCancel }: { formCount: number; onCancel:
       <div className="mx-auto max-w-xl px-4 sm:px-0 mt-8">
         <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="h-2 w-full bg-zinc-900 dark:bg-zinc-100" />
-          <div className="p-6 sm:p-8">
+          <div className="p-4 sm:p-6 md:p-8">
             <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Create registration form</h2>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{formCount} of {MAX_REGISTRATION_FORMS} forms used</p>
             <form action={dispatch} className="mt-6 space-y-5">
@@ -594,17 +595,20 @@ function SettingsPanel({
     <>
       {toast && <Toast state={toast} onClose={st.visible ? st.dismiss : dt.dismiss} />}
       <div className="border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
-        <div className="flex flex-col gap-4 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+        <div className="flex flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="min-w-0 flex-1">
             <p className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-              <Settings2 className="h-4 w-4" />
+              <Settings2 className="h-4 w-4 shrink-0" />
               Form settings
+            </p>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              Configure sync, emails, and rules
             </p>
           </div>
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:focus:ring-zinc-300"
+            className="inline-flex items-center justify-center gap-2 rounded-md border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:focus:ring-zinc-300 sm:w-auto"
           >
             <Settings2 className="h-4 w-4" />
             Open settings
@@ -1151,7 +1155,63 @@ function FieldSettingsModal({
           </button>
         </div>
 
-        <div className="space-y-5 px-5 py-5 sm:px-6">
+        <div className="max-h-[70vh] overflow-y-auto space-y-6 px-5 py-6 sm:px-6">
+          {/* Basic Controls (Mobile optimization: moved from footer) */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-3.5 dark:border-zinc-800 dark:bg-zinc-900/50">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
+                  <CheckSquare className="h-4 w-4" />
+                </div>
+                <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Required</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => onChange(normalizeFieldDraft({ ...field, required: !field.required }))}
+                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${field.required ? "bg-zinc-900 dark:bg-zinc-100" : "bg-zinc-300 dark:bg-zinc-700"}`}
+              >
+                <span className={`inline-block h-5 w-5 translate-y-0.5 rounded-full bg-white shadow transition-transform ${field.required ? "translate-x-5 dark:bg-zinc-900" : "translate-x-0.5"}`} />
+              </button>
+            </div>
+
+            <div className={`flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-3.5 dark:border-zinc-800 dark:bg-zinc-900/50 ${uniqueSupported ? "opacity-100" : "opacity-30 pointer-events-none"}`}>
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
+                  <Fingerprint className="h-4 w-4" />
+                </div>
+                <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Unique</span>
+              </div>
+              <button
+                type="button"
+                disabled={!uniqueSupported}
+                onClick={() => onChange(normalizeFieldDraft({ ...field, isUnique: !field.isUnique }))}
+                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${field.isUnique ? "bg-zinc-900 dark:bg-zinc-100" : "bg-zinc-300 dark:bg-zinc-700"}`}
+              >
+                <span className={`inline-block h-5 w-5 translate-y-0.5 rounded-full bg-white shadow transition-transform ${field.isUnique ? "translate-x-5 dark:bg-zinc-900" : "translate-x-0.5"}`} />
+              </button>
+            </div>
+
+            {field.type !== "page_break" && (
+              <div className="col-span-full flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-3.5 dark:border-zinc-800 dark:bg-zinc-900/50">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
+                    <UserSquare2 className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Per-member field</span>
+                    <p className="text-[0.625rem] text-zinc-500 dark:text-zinc-400 uppercase tracking-wider font-bold">Scope</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onChange(normalizeFieldDraft({ ...field, scope: field.scope === "member" ? "submission" : "member" }))}
+                  className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${field.scope === "member" ? "bg-zinc-900 dark:bg-zinc-100" : "bg-zinc-300 dark:bg-zinc-700"}`}
+                >
+                  <span className={`inline-block h-5 w-5 translate-y-0.5 rounded-full bg-white shadow transition-transform ${field.scope === "member" ? "translate-x-5 dark:bg-zinc-900" : "translate-x-0.5"}`} />
+                </button>
+              </div>
+            )}
+          </div>
           <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-950/60">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -1315,7 +1375,7 @@ function FieldCard({ field, onChange, onDelete }: {
 
         {/* Question row */}
         {type !== "page_break" && (
-          <div className="flex flex-col items-start gap-3 px-6 pt-2 pb-4 sm:flex-row">
+          <div className="flex flex-col items-start gap-3 px-4 pb-4 sm:px-6 sm:pt-2 sm:flex-row">
             <input value={label} onChange={e => {
               const newLabel = e.target.value;
               const newKey = newLabel.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "field";
@@ -1336,13 +1396,13 @@ function FieldCard({ field, onChange, onDelete }: {
         )}
 
         {type !== "page_break" && field.helpText && (
-          <p className="-mt-1 px-6 text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+          <p className="-mt-1 px-4 text-sm leading-6 text-zinc-500 dark:text-zinc-400 sm:px-6">
             {field.helpText}
           </p>
         )}
 
         {/* Body: options or preview */}
-        <div className="px-6 pb-6">
+        <div className="px-4 pb-4 sm:px-6 sm:pb-6">
           {isChoiceType
             ? <OptionList type={type} options={(options || []).map((o, i) => ({ id: `o${i}`, ...o }))} onChange={(o) => update({ options: o.map((opt) => ({ label: opt.label, value: opt.value })) })} />
             : <FieldPreview field={field} />
@@ -1350,36 +1410,34 @@ function FieldCard({ field, onChange, onDelete }: {
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-zinc-100 bg-zinc-50 px-6 py-3 dark:border-zinc-800/80 dark:bg-zinc-950">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className={type === "page_break" ? "hidden" : "block"}>
-              <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+        <div className="border-t border-zinc-100 bg-zinc-50 px-4 py-3 dark:border-zinc-800/80 dark:bg-zinc-950 sm:px-6">
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
+            <div className={`hidden flex-wrap items-center gap-x-6 gap-y-2 sm:flex ${type === "page_break" ? "hidden" : "flex"}`}>
+              <label className="flex cursor-pointer items-center gap-2 text-[0.625rem] font-bold uppercase tracking-wider text-zinc-500 transition-colors hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">
                 <span>Per member</span>
                 <button type="button" onClick={() => update({ scope: scope === "member" ? "submission" : "member" })}
-                  className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${scope === "member" ? "bg-zinc-900 dark:bg-zinc-100" : "bg-zinc-300 dark:bg-zinc-700"}`}>
+                  className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${scope === "member" ? "bg-zinc-900 dark:bg-zinc-100" : "bg-zinc-300 dark:bg-zinc-700"}`}>
                   <span className={`inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${scope === "member" ? "translate-x-4 dark:bg-zinc-900" : "translate-x-0.5"}`} />
                 </button>
               </label>
-            </div>
 
-            <div className="ml-auto flex items-center gap-5">
               {type !== "page_break" && (
                 <>
-                  <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  <label className="flex cursor-pointer items-center gap-2 text-[0.625rem] font-bold uppercase tracking-wider text-zinc-500 transition-colors hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">
                     Required
                     <button type="button" onClick={() => update({ required: !required })}
-                      className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${required ? "bg-zinc-900 dark:bg-zinc-100" : "bg-zinc-300 dark:bg-zinc-700"}`}>
+                      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${required ? "bg-zinc-900 dark:bg-zinc-100" : "bg-zinc-300 dark:bg-zinc-700"}`}>
                       <span className={`inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${required ? "translate-x-4 dark:bg-zinc-900" : "translate-x-0.5"}`} />
                     </button>
                   </label>
 
-                  <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  <label className="flex cursor-pointer items-center gap-2 text-[0.625rem] font-bold uppercase tracking-wider text-zinc-500 transition-colors hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">
                     Unique
                     <button
                       type="button"
                       disabled={!isUniqueSupported}
                       onClick={() => update({ isUnique: !field.isUnique })}
-                      className={`relative inline-flex h-5 w-9 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                         field.isUnique ? "bg-zinc-900 dark:bg-zinc-100" : "bg-zinc-300 dark:bg-zinc-700"
                       }`}
                       title={
@@ -1391,22 +1449,31 @@ function FieldCard({ field, onChange, onDelete }: {
                       <span className={`inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow transition-transform ${field.isUnique ? "translate-x-4 dark:bg-zinc-900" : "translate-x-0.5"}`} />
                     </button>
                   </label>
+                </>
+              )}
+            </div>
 
+            <div className="flex w-full items-center justify-between gap-5 sm:ml-auto sm:w-auto">
+              <span className="text-[0.625rem] font-bold uppercase tracking-wider text-zinc-400 sm:hidden">
+                Question controls
+              </span>
+              <div className="flex items-center gap-4">
+                {type !== "page_break" && (
                   <button
                     type="button"
                     onClick={() => setShowSettings(true)}
-                    className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-600 transition-colors hover:border-zinc-400 hover:text-zinc-900 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-zinc-500 dark:hover:text-zinc-50"
+                    className="inline-flex items-center gap-2 rounded-full border border-zinc-300 px-3 py-1.5 text-[0.625rem] font-bold uppercase tracking-wider text-zinc-600 transition-colors hover:border-zinc-400 hover:text-zinc-900 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-zinc-500 dark:hover:text-zinc-50"
                     title="Edit field settings"
                   >
-                    <Settings2 className="h-3.5 w-3.5" />
+                    <Settings2 className="h-3.5 w-3.5 shrink-0" />
                     Settings
                   </button>
-                </>
-              )}
+                )}
 
-              <button type="button" onClick={onDelete} className="text-zinc-400 hover:text-rose-500 transition-colors" title={type === "page_break" ? "Delete Page Break" : "Delete Question"}>
-                <Trash2 className="h-4 w-4" />
-              </button>
+                <button type="button" onClick={onDelete} className="text-zinc-400 transition-colors hover:text-rose-500" title={type === "page_break" ? "Delete Page Break" : "Delete Question"}>
+                  <Trash2 className="h-4 w-4 shrink-0" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1575,13 +1642,16 @@ function FieldBuilder({ form }: { form: FormWithFields }) {
        </div>
 
       {/* Global Save Button */}
-      <div className={`sticky bottom-6 z-20 mx-auto flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-3 pr-4 shadow-2xl transition-all duration-300 dark:border-zinc-700 dark:bg-zinc-800 w-[90%] max-w-xl ${isMounted && isDirty ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0 pointer-events-none"}`}>
-        <p className="pl-3 text-sm font-medium text-zinc-600 dark:text-zinc-300">You have unsaved changes.</p>
+      <div className={`sticky bottom-6 z-20 mx-auto flex w-[95%] max-w-xl flex-col items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-white/95 p-4 shadow-2xl backdrop-blur-md transition-all duration-300 dark:border-zinc-700 dark:bg-zinc-800/95 sm:w-[90%] sm:flex-row sm:gap-3 sm:rounded-xl sm:p-3 sm:pr-4 ${isMounted && isDirty ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0 pointer-events-none"}`}>
+        <p className="flex items-center gap-2 text-sm font-semibold text-zinc-600 dark:text-zinc-300 sm:pl-3 sm:font-medium">
+          <ShieldAlert className="h-4 w-4 text-amber-500 sm:hidden" />
+          You have unsaved changes.
+        </p>
         <button
           type="button"
           onClick={handleBulkSave}
           disabled={isSaving}
-          className="flex items-center gap-2 rounded-md bg-zinc-900 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus:ring-zinc-300 dark:focus:ring-offset-zinc-800"
+          className="flex w-full items-center justify-center gap-2 rounded-md bg-zinc-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus:ring-zinc-300 dark:focus:ring-offset-zinc-800 sm:w-auto sm:py-2.5"
         >
           {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
           {isSaving ? "Saving..." : "Save changes"}
@@ -1615,7 +1685,7 @@ export default function AdminRegistrationsManager({
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 sm:px-0 pb-20">
+    <div className="mx-auto w-full max-w-3xl pb-20">
       {/* Form selector dropdown */}
       <FormSelectorDropdown
         items={forms.map((f) => ({
@@ -1636,29 +1706,30 @@ export default function AdminRegistrationsManager({
           <BannerArea form={selectedForm} bannerUrl={bannerUrl} />
 
            {/* Form title & kind */}
-          <div className="px-6 py-6 pb-4">
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-              <div>
-                 <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <div className="px-4 py-8 pb-6 sm:px-6">
+            <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
+              <div className="min-w-0 flex-1">
+                 <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 truncate sm:text-3xl">
                   {selectedForm.title}
                 </h2>
-                <div className="mt-2 flex flex-wrap items-center gap-2 sm:gap-3">
-                  <span className="inline-flex items-center rounded-md bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
+                <div className="mt-3 flex flex-wrap items-center gap-2.5">
+                  <span className="inline-flex items-center rounded-md bg-zinc-100 px-2.5 py-0.5 text-[0.625rem] font-bold uppercase tracking-widest text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
                      {selectedForm.kind}
                   </span>
-                  <span className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${selectedForm.status === "open" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300" : selectedForm.status === "draft" ? "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300" : "bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300"}`}>
+                  <span className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-[0.625rem] font-bold uppercase tracking-widest ${selectedForm.status === "open" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300" : selectedForm.status === "draft" ? "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300" : "bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300"}`}>
                     {selectedForm.status}
                   </span>
                   <div className="flex items-center gap-1.5 text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                    <span className="hidden sm:inline">/</span>{selectedForm.slug}
-                     <a href={`/${selectedForm.slug}`} target="_blank" className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 ml-1 transition-colors" title="View live form">
-                      <ExternalLink className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">/</span>
+                    <span className="truncate max-w-[12rem]">{selectedForm.slug}</span>
+                     <a href={`/${selectedForm.slug}`} target="_blank" className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 transition-colors" title="View live form">
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0" />
                     </a>
                   </div>
                 </div>
               </div>
               <Link href={`/admin/registrations?form=${selectedForm.slug}`}
-                className="inline-flex items-center justify-center rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:focus:ring-zinc-300 whitespace-nowrap">
+                className="inline-flex w-full items-center justify-center rounded-md border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:focus:ring-zinc-300 sm:w-auto">
                 View responses
               </Link>
             </div>

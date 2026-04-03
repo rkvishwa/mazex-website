@@ -297,7 +297,7 @@ export default function AdminContactsMailer({
 
   if (contacts.length === 0) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 mt-4 md:mt-0">
         <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-10 text-center dark:border-zinc-700 dark:bg-zinc-900">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
             <Mail className="h-6 w-6" />
@@ -315,7 +315,7 @@ export default function AdminContactsMailer({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 mt-4 md:mt-0">
       <div className="space-y-3">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">

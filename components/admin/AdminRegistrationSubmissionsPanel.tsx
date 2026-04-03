@@ -116,7 +116,7 @@ export function SubmissionDetailPanel({
         </Link>
       </div>
 
-      <div className="p-6 sm:p-8">
+      <div className="p-4 sm:p-6 md:p-8">
         <div className="grid gap-4 md:grid-cols-2">
           {submission.displaySubtitle && <SummaryItem label="Contact" value={submission.displaySubtitle} />}
           {submission.teamName && <SummaryItem label="Team name" value={submission.teamName} />}
@@ -311,7 +311,7 @@ export default function AdminRegistrationSubmissionsPanel({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 sm:px-0 pb-10">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 pb-10">
       <OptimisticSubmissionDrawer form={form} submissions={submissionPage.submissions} />
       <FormSelectorDropdown
         items={forms.map((f) => ({
@@ -324,7 +324,7 @@ export default function AdminRegistrationSubmissionsPanel({
         selectedId={form.id}
       />
 
-       <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+       <div className="rounded-xl border border-zinc-200 bg-white p-4 sm:p-6 md:p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-zinc-100 pb-6 dark:border-zinc-800/80">
           <div>
             <h3 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">

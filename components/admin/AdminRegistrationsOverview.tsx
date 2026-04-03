@@ -30,7 +30,7 @@ export default async function AdminRegistrationsOverview() {
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 pb-10">
-      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 sm:p-8 shadow-sm">
+      <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 px-3 py-5 sm:p-6 md:p-8 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div className="max-w-3xl">
             <div className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 tracking-wide uppercase">
@@ -62,7 +62,7 @@ export default async function AdminRegistrationsOverview() {
           </div>
         </div>
 
-        <div className="mt-8 grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard label="Total submissions" value={String(overview.totalSubmissions)} />
           <MetricCard
             label="Open forms"
@@ -89,7 +89,7 @@ export default async function AdminRegistrationsOverview() {
       <AdminRegistrationAnalyticsCharts analytics={overview.analytics} />
 
       <div className="grid gap-8 xl:grid-cols-[1.5fr_1fr]">
-        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 sm:p-8 shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 px-3 py-5 sm:p-6 md:p-8 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-2xl">
               <h3 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
@@ -130,7 +130,7 @@ export default async function AdminRegistrationsOverview() {
                   <Link
                     key={item.form.id}
                     href={`/admin/form-builder?form=${item.form.slug}`}
-                    className="group block overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-950/80 p-5 transition-all hover:border-zinc-300 hover:shadow-sm dark:hover:border-zinc-700"
+                    className="group block overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-950/80 p-4 sm:p-5 transition-all hover:border-zinc-300 hover:shadow-sm dark:hover:border-zinc-700"
                   >
                     <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                       <div className="min-w-0 flex-1">
@@ -205,7 +205,7 @@ export default async function AdminRegistrationsOverview() {
           )}
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-6 sm:p-8 shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 px-3 py-5 sm:p-6 md:p-8 shadow-sm">
           <h3 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             Recent submissions
           </h3>

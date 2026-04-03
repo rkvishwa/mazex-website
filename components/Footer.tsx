@@ -35,7 +35,7 @@ const SOCIAL_LINKS = [
 
 export default function Footer() {
   return (
-    <footer className="theme-section relative overflow-hidden border-t border-[#2f2540] pb-0">
+    <footer id="site-footer" className="theme-section relative overflow-hidden border-t border-[#2f2540] pb-0">
       <div className="pointer-events-none absolute top-0 left-[18%] h-72 w-72 rounded-full bg-maze-accent/8 blur-[120px]" />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

@@ -145,7 +145,7 @@ export default function Navbar({
               >
                 <Image
                   src="/images/brand/logo-white.svg"
-                  alt="MazeX Logo"
+                  alt="MazeX 1.0 - Micromouse Robotics Competition by IEEE RAS & WIE, University of Moratuwa"
                   width={156}
                   height={88}
                   className="h-[3.5rem] w-auto object-contain sm:h-[3.5rem] lg:h-[4rem]"

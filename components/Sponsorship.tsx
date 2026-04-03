@@ -13,6 +13,8 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
 };
 
+import ImageWithSkeleton from "./ImageWithSkeleton";
+
 export default function Sponsorship({
   sponsors,
 }: {
@@ -65,11 +67,13 @@ export default function Sponsorship({
                     className="absolute inset-0 z-10 skew-x-[-25deg] bg-gradient-to-r from-transparent via-white/80 to-transparent"
                   />
 
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <ImageWithSkeleton
                     src={partner.imageSrc}
                     alt={`${partner.title} Logo`}
-                    className="z-0 h-full w-full object-contain transition-transform duration-500 group-hover:scale-110"
+                    className="z-0 object-contain transition-transform duration-500 group-hover:scale-110"
+                    containerClassName="absolute inset-0 z-0 !p-1 sm:!p-2"
+                    fill
+                    sizes="256px"
                   />
                 </a>
               ) : (
@@ -86,11 +90,13 @@ export default function Sponsorship({
                     className="absolute inset-0 z-10 skew-x-[-25deg] bg-gradient-to-r from-transparent via-white/80 to-transparent"
                   />
 
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <ImageWithSkeleton
                     src={partner.imageSrc}
                     alt={`${partner.title} Logo`}
-                    className="z-0 h-full w-full object-contain"
+                    className="z-0 object-contain"
+                    containerClassName="absolute inset-0 z-0 !p-1 sm:!p-2"
+                    fill
+                    sizes="256px"
                   />
                 </div>
               )}

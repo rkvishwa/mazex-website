@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, Variants } from "framer-motion";
-import Image from "next/image";
+import ImageWithSkeleton from "./ImageWithSkeleton";
 import { useMemo } from "react";
 
 const TEAM_MEMBERS = [
@@ -148,10 +148,11 @@ const MobileContactCard = ({ member }: { member: (typeof TEAM_MEMBERS)[0] }) => 
     <div className="absolute inset-0 bg-[#A855F7]/5 opacity-0 group-hover:opacity-100 blur-[1rem] transition-opacity duration-500 pointer-events-none" />
 
     <div className="relative h-[4.5rem] w-[4.5rem] flex-shrink-0 overflow-hidden rounded-full ring-[0.125rem] ring-maze-border/40 transition-all duration-500 group-hover:ring-[#A855F7]/60 shadow-lg">
-      <Image
+      <ImageWithSkeleton
         src={member.image}
         alt={member.name}
         fill
+        sizes="72px"
         className="object-cover grayscale transition-all duration-500 group-hover:grayscale-0 group-hover:scale-105"
       />
     </div>
@@ -273,10 +274,11 @@ export default function ContactUs() {
                     <Hexagon custom={pos}>
                       <div className="flex flex-col items-center w-full">
                         <div className="relative mb-[0.75rem] h-[4.5rem] w-[4.5rem] overflow-hidden rounded-full ring-2 ring-maze-border/40 transition-all duration-500 group-hover:ring-[#A855F7]/60 shadow-xl">
-                          <Image
+                          <ImageWithSkeleton
                             src={member.image}
                             alt={member.name}
                             fill
+                            sizes="72px"
                             className="object-cover grayscale transition-all duration-500 group-hover:grayscale-0 group-hover:scale-110"
                           />
                         </div>

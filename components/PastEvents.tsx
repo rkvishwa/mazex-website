@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { PAST_EVENTS } from "@/lib/constants";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import ImageWithSkeleton from "./ImageWithSkeleton";
 
 export default function PastEvents() {
   const [activeSlide, setActiveSlide] = useState(0);
@@ -251,10 +252,12 @@ export default function PastEvents() {
                     }`}
                   >
                     {/* Image */}
-                    <img
+                    <ImageWithSkeleton
                       src={event.images[0]}
                       alt={event.title}
-                      className="h-full w-full object-cover"
+                      className="object-cover"
+                      fill
+                      sizes="(max-width: 768px) 80vw, 60vw"
                       draggable={false}
                     />
 
@@ -383,10 +386,12 @@ export default function PastEvents() {
                       transition={{ duration: 0.45 }}
                       className="relative aspect-[3/2] w-full max-w-5xl max-h-[55vh] sm:max-h-[70vh] overflow-hidden rounded-none sm:rounded-xl shadow-2xl shadow-black/80 border-y border-white/10 sm:border"
                     >
-                      <img
+                      <ImageWithSkeleton
                         src={selectedEvent.images[activeImageIndex]}
                         alt={`${selectedEvent.title} - ${activeImageIndex + 1}`}
-                        className="h-full w-full object-cover"
+                        className="object-cover"
+                        fill
+                        sizes="(max-width: 768px) 100vw, 80vw"
                       />
                     </motion.div>
 
@@ -416,9 +421,11 @@ export default function PastEvents() {
                               : "border-white/10 opacity-50 hover:opacity-100"
                           }`}
                         >
-                          <img
+                          <ImageWithSkeleton
                             src={img}
-                            className="h-full w-full object-cover"
+                            className="object-cover"
+                            fill
+                            sizes="100px"
                             alt=""
                           />
                         </button>

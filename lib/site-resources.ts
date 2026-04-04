@@ -147,10 +147,11 @@ export async function setSponsorOpeningsEnabled(enabled: boolean) {
   );
 }
 
-export async function getDelegateBookletHref() {
+export async function getConfiguredDelegateBookletHref() {
   const storedValue = await getSiteResourceValue(DELEGATE_BOOKLET_RESOURCE_KEY);
-  return (
-    normalizeSiteResourceLink(storedValue ?? "") ??
-    DEFAULT_DELEGATE_BOOKLET_PATH
-  );
+  return normalizeSiteResourceLink(storedValue ?? "");
+}
+
+export async function getDelegateBookletHref() {
+  return getConfiguredDelegateBookletHref() ?? DEFAULT_DELEGATE_BOOKLET_PATH;
 }

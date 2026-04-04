@@ -15,7 +15,10 @@ import Footer from "@/components/Footer";
 import HexBackground from "@/components/HexBackground";
 import { getResolvedSiteEvents } from "@/lib/site-events";
 import { listSponsors } from "@/lib/sponsors";
-import { getSponsorOpeningsEnabled } from "@/lib/site-resources";
+import {
+  getConfiguredDelegateBookletHref,
+  getSponsorOpeningsEnabled,
+} from "@/lib/site-resources";
 
 const Sponsorship = dynamic(() => import("@/components/Sponsorship"));
 
@@ -27,10 +30,12 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  const [sponsors, siteEvents, sponsorOpeningsEnabled] = await Promise.all([
+  const [sponsors, siteEvents, sponsorOpeningsEnabled, delegateBookletHref] =
+    await Promise.all([
     listSponsors(),
     getResolvedSiteEvents(),
     getSponsorOpeningsEnabled(),
+    getConfiguredDelegateBookletHref(),
   ]);
 
   const jsonLd = {
@@ -105,7 +110,7 @@ export default async function Home() {
         <AboutMazeX />
         <WhatIsMicromouse />
         <WorkshopTimeline events={siteEvents.workshops} />
-        <Delegates />
+        <Delegates hasDelegateBookletLink={Boolean(delegateBookletHref)} />
 
         <Sponsorship
           sponsors={sponsors}

@@ -42,13 +42,27 @@ export async function updateAdminResourcesAction(
 
   const delegateBooklet = formData.get("delegateBooklet");
 
-  if (typeof delegateBooklet !== "string" || !delegateBooklet.trim()) {
-    return buildState("error", "Enter a delegate booklet URL to continue.");
+  if (typeof delegateBooklet !== "string") {
+    return buildState("error", "Invalid delegate booklet URL payload.");
   }
 
-  const normalizedLink = normalizeSiteResourceLink(delegateBooklet);
+  const trimmedLink = delegateBooklet.trim();
+  let normalizedLink = "";
 
-  if (!normalizedLink) {
+  if (trimmedLink) {
+    const parsedLink = normalizeSiteResourceLink(trimmedLink);
+
+    if (!parsedLink) {
+      return buildState(
+        "error",
+        "Enter a valid http(s) URL or a site path that starts with '/'.",
+      );
+    }
+
+    normalizedLink = parsedLink;
+  }
+
+  if (trimmedLink && !normalizedLink) {
     return buildState(
       "error",
       "Enter a valid http(s) URL or a site path that starts with '/'.",
@@ -95,5 +109,10 @@ export async function updateAdminResourcesAction(
   revalidatePath("/");
   revalidatePath("/admin/resources");
 
-  return buildState("success", "Delegate booklet URL updated successfully.");
+  return buildState(
+    "success",
+    trimmedLink
+      ? "Delegate booklet URL updated successfully."
+      : "Delegate booklet URL cleared. The public button is now disabled.",
+  );
 }

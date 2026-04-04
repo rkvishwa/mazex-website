@@ -840,11 +840,18 @@ export async function resolveGoogleSpreadsheetForReconnectedAccount(params: {
     existingSpreadsheetId &&
     trim(params.existingConnection?.refreshToken)
   ) {
-    return cloneGoogleSpreadsheetToNewAccount({
-      sourceRefreshToken: params.existingConnection!.refreshToken,
-      sourceSpreadsheetId: existingSpreadsheetId,
-      targetAccessToken: params.targetAccessToken,
-    });
+    try {
+      return await cloneGoogleSpreadsheetToNewAccount({
+        sourceRefreshToken: params.existingConnection!.refreshToken,
+        sourceSpreadsheetId: existingSpreadsheetId,
+        targetAccessToken: params.targetAccessToken,
+      });
+    } catch (error) {
+      console.error(
+        "Google Sheets transfer failed during account reconnect. Falling back to a fresh spreadsheet.",
+        error,
+      );
+    }
   }
 
   return createGoogleSpreadsheet(params.targetAccessToken);

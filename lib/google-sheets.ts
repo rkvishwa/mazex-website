@@ -7,7 +7,7 @@ const DEFAULT_CONNECTIONS_COLLECTION_ID = "google_sheets_connections";
 const DEFAULT_SPREADSHEET_TITLE = "MazeX Registrations";
 const GOOGLE_OAUTH_SCOPES = [
   "openid",
-  "email",
+  "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/drive.file",
 ];
 const GOOGLE_SHEETS_API_BASE_URL = "https://sheets.googleapis.com/v4";

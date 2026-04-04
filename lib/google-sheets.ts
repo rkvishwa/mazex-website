@@ -358,7 +358,7 @@ export function buildGoogleSheetsOAuthUrl(params: {
   url.searchParams.set("scope", GOOGLE_OAUTH_SCOPES.join(" "));
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("include_granted_scopes", "true");
-  url.searchParams.set("prompt", "consent");
+  url.searchParams.set("prompt", "select_account consent");
   url.searchParams.set("state", params.state);
 
   return url.toString();

@@ -3,7 +3,11 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 
-export default function Delegates() {
+type DelegatesProps = {
+  hasDelegateBookletLink: boolean;
+};
+
+export default function Delegates({ hasDelegateBookletLink }: DelegatesProps) {
   return (
     <section id="delegates" className="theme-section relative pt-24 pb-32 sm:pt-32 sm:pb-40">
       <div className="absolute top-[10%] right-[-8%] h-[26.25rem] w-[26.25rem] rounded-full bg-[#A855F7]/10 opacity-40 blur-[9.375rem] pointer-events-none" />
@@ -70,15 +74,30 @@ export default function Delegates() {
             </div>
 
             <div className="flex-shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
-              <Link
-                href="/resources/delegate-booklet"
-                className="theme-button theme-button-register flex w-full sm:inline-flex justify-center items-center gap-2 sm:gap-3 rounded-full px-6 py-3.5 sm:px-8 sm:py-4 text-sm sm:text-base font-bold"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.4}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                </svg>
-                Download Booklet
-              </Link>
+              {hasDelegateBookletLink ? (
+                <Link
+                  href="/resources/delegate-booklet"
+                  className="theme-button theme-button-register flex w-full sm:inline-flex justify-center items-center gap-2 sm:gap-3 rounded-full px-6 py-3.5 sm:px-8 sm:py-4 text-sm sm:text-base font-bold"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.4}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                  </svg>
+                  Download Booklet
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  title="Delegate booklet link is not available yet"
+                  className="theme-button theme-button-register flex w-full sm:inline-flex justify-center items-center gap-2 sm:gap-3 rounded-full px-6 py-3.5 sm:px-8 sm:py-4 text-sm sm:text-base font-bold opacity-50 cursor-not-allowed"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.4}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                  </svg>
+                  Download Booklet
+                </button>
+              )}
             </div>
           </div>
         </motion.div>

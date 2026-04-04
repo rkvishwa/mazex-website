@@ -20,6 +20,10 @@ const loginFailedMessage = "Unable to sign in right now.";
 
 type AuthenticatedAdmin = {
   adminLabel: string;
+  superAdminLabel: string;
+  isSuperAdmin: boolean;
+  canManageAdmins: boolean;
+  canDeleteAdmins: boolean;
   user: Models.User;
 };
 
@@ -27,6 +31,8 @@ type AuthenticateAdminResult =
   | {
       ok: true;
       adminLabel: string;
+      superAdminLabel: string;
+      isSuperAdmin: boolean;
       sessionExpiresAt: string;
       sessionSecret: string;
       user: Models.User;
@@ -36,8 +42,30 @@ type AuthenticateAdminResult =
       message: string;
     };
 
-function isAuthorizedAdmin(user: Models.User, adminLabel: string) {
-  return user.status && user.emailVerification && user.labels.includes(adminLabel);
+function hasAnyAdminLabel(
+  user: Models.User,
+  adminLabel: string,
+  superAdminLabel: string,
+) {
+  return (
+    user.labels.includes(adminLabel) || user.labels.includes(superAdminLabel)
+  );
+}
+
+function isSuperAdmin(user: Models.User, superAdminLabel: string) {
+  return user.labels.includes(superAdminLabel);
+}
+
+function isAuthorizedAdmin(
+  user: Models.User,
+  adminLabel: string,
+  superAdminLabel: string,
+) {
+  return (
+    user.status &&
+    user.emailVerification &&
+    hasAnyAdminLabel(user, adminLabel, superAdminLabel)
+  );
 }
 
 async function getRequestUserAgent() {
@@ -135,7 +163,7 @@ export async function authenticateAdmin(
     );
     const user = await sessionAccount.get();
 
-    if (!isAuthorizedAdmin(user, config.adminLabel)) {
+    if (!isAuthorizedAdmin(user, config.adminLabel, config.superAdminLabel)) {
       await revokeSession(session.secret, userAgent);
 
       return {
@@ -149,6 +177,8 @@ export async function authenticateAdmin(
     return {
       ok: true,
       adminLabel: config.adminLabel,
+      superAdminLabel: config.superAdminLabel,
+      isSuperAdmin: isSuperAdmin(user, config.superAdminLabel),
       sessionExpiresAt: session.expire,
       sessionSecret: session.secret,
       user,
@@ -187,7 +217,7 @@ export async function getCurrentAdmin(): Promise<AuthenticatedAdmin | null> {
     return null;
   }
 
-  const { adminLabel } = getAppwriteConfig();
+  const { adminLabel, superAdminLabel } = getAppwriteConfig();
   const userAgent = await getRequestUserAgent();
 
   try {
@@ -196,12 +226,18 @@ export async function getCurrentAdmin(): Promise<AuthenticatedAdmin | null> {
     );
     const user = await sessionAccount.get();
 
-    if (!isAuthorizedAdmin(user, adminLabel)) {
+    if (!isAuthorizedAdmin(user, adminLabel, superAdminLabel)) {
       return null;
     }
 
+    const currentAdminIsSuperAdmin = isSuperAdmin(user, superAdminLabel);
+
     return {
       adminLabel,
+      superAdminLabel,
+      isSuperAdmin: currentAdminIsSuperAdmin,
+      canManageAdmins: currentAdminIsSuperAdmin,
+      canDeleteAdmins: currentAdminIsSuperAdmin,
       user,
     };
   } catch {
@@ -221,7 +257,7 @@ export async function getCurrentAdminPasswordClient() {
     return null;
   }
 
-  const { adminLabel } = getAppwriteConfig();
+  const { adminLabel, superAdminLabel } = getAppwriteConfig();
   const userAgent = await getRequestUserAgent();
 
   try {
@@ -230,7 +266,7 @@ export async function getCurrentAdminPasswordClient() {
     );
     const user = await sessionAccount.get();
 
-    if (!isAuthorizedAdmin(user, adminLabel)) {
+    if (!isAuthorizedAdmin(user, adminLabel, superAdminLabel)) {
       return null;
     }
 

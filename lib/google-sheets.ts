@@ -85,6 +85,12 @@ type GoogleSheetValuesResponse = {
   values?: unknown[][];
 };
 
+type ResolvedGoogleSpreadsheet = {
+  spreadsheetId: string;
+  spreadsheetUrl: string | null;
+  transferWarning: string | null;
+};
+
 export class GoogleSheetsConfigError extends Error {
   constructor(message: string) {
     super(message);
@@ -684,91 +690,28 @@ async function updateGoogleSheetValues(
   );
 }
 
-async function createGoogleSpreadsheet(
-  accessToken: string,
-  title = DEFAULT_SPREADSHEET_TITLE,
-) {
-  const response = await fetch(`${GOOGLE_SHEETS_API_BASE_URL}/spreadsheets`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      properties: {
-        title,
-      },
-    }),
-    cache: "no-store",
-  });
-  const payload = (await readGoogleResponse(response)) as GoogleSpreadsheetResponse | null;
-
-  if (!response.ok) {
-    throw new Error(
-      extractGoogleErrorMessage(payload, "Unable to create the Google spreadsheet."),
-    );
-  }
-
-  const spreadsheetId = trim(payload?.spreadsheetId);
-  if (!spreadsheetId) {
-    throw new Error("Google created the spreadsheet without returning its ID.");
-  }
-
-  return {
-    spreadsheetId,
-    spreadsheetUrl: trimNullable(payload?.spreadsheetUrl),
-  };
-}
-
-export async function ensureGoogleSpreadsheetForAdmin(
-  accessToken: string,
-  existingSpreadsheetId: string | null | undefined,
-) {
-  const normalizedSpreadsheetId = trim(existingSpreadsheetId);
-  if (normalizedSpreadsheetId) {
-    const existing = await fetchGoogleSpreadsheet(accessToken, normalizedSpreadsheetId);
-    if (existing?.spreadsheetId) {
-      return {
-        spreadsheetId: existing.spreadsheetId.trim(),
-        spreadsheetUrl: trimNullable(existing.spreadsheetUrl),
-      };
-    }
-  }
-
-  return createGoogleSpreadsheet(accessToken);
-}
-
-export async function cloneGoogleSpreadsheetToNewAccount(params: {
-  sourceRefreshToken: string;
-  sourceSpreadsheetId: string;
+async function cloneGoogleSpreadsheetViaSheetsApi(params: {
+  sourceAccessToken: string;
+  sourceSpreadsheet: GoogleSpreadsheetDetailsResponse;
   targetAccessToken: string;
-}) {
-  const sourceTokenResponse = await refreshGoogleSheetsAccessToken(
-    params.sourceRefreshToken,
-  );
-  const sourceAccessToken = sourceTokenResponse.access_token?.trim();
-  if (!sourceAccessToken) {
-    throw new Error("Unable to refresh the existing Google Sheets connection.");
+  targetSpreadsheetName: string;
+}): Promise<ResolvedGoogleSpreadsheet> {
+  const sourceSpreadsheetId = trim(params.sourceSpreadsheet.spreadsheetId);
+  if (!sourceSpreadsheetId) {
+    throw new Error("Unable to read the source spreadsheet for transfer.");
   }
 
-  const sourceSpreadsheet = await fetchGoogleSpreadsheetDetails(
-    sourceAccessToken,
-    params.sourceSpreadsheetId,
-  );
-  if (!sourceSpreadsheet?.spreadsheetId) {
-    throw new Error(
-      "Unable to access the existing Google Sheets spreadsheet for transfer.",
-    );
-  }
-
-  const sourceSheets = listGoogleSpreadsheetSheets(sourceSpreadsheet);
+  const sourceSheets = listGoogleSpreadsheetSheets(params.sourceSpreadsheet);
   const targetSpreadsheet = await createGoogleSpreadsheet(
     params.targetAccessToken,
-    trim(sourceSpreadsheet.properties?.title) || DEFAULT_SPREADSHEET_TITLE,
+    params.targetSpreadsheetName,
   );
 
   if (sourceSheets.length === 0) {
-    return targetSpreadsheet;
+    return {
+      ...targetSpreadsheet,
+      transferWarning: null,
+    };
   }
 
   const targetSpreadsheetDetails = await fetchGoogleSpreadsheetDetails(
@@ -777,8 +720,8 @@ export async function cloneGoogleSpreadsheetToNewAccount(params: {
   );
   const defaultTargetSheet = listGoogleSpreadsheetSheets(targetSpreadsheetDetails)[0];
 
-  if (!defaultTargetSheet?.sheetId) {
-    throw new Error("Unable to prepare the destination Google spreadsheet.");
+  if (typeof defaultTargetSheet?.sheetId !== "number") {
+    throw new Error("Unable to prepare the destination spreadsheet for transfer.");
   }
 
   const [firstSourceSheet, ...remainingSourceSheets] = sourceSheets;
@@ -820,8 +763,8 @@ export async function cloneGoogleSpreadsheetToNewAccount(params: {
       title: sheet.title ?? "Sheet",
       values: sheet.title
         ? await fetchGoogleSheetValues(
-            sourceAccessToken,
-            sourceSpreadsheet.spreadsheetId!,
+            params.sourceAccessToken,
+            sourceSpreadsheetId,
             sheet.title,
           )
         : [],
@@ -841,7 +784,102 @@ export async function cloneGoogleSpreadsheetToNewAccount(params: {
     );
   }
 
-  return targetSpreadsheet;
+  return {
+    ...targetSpreadsheet,
+    transferWarning: null,
+  };
+}
+
+async function createGoogleSpreadsheet(
+  accessToken: string,
+  title = DEFAULT_SPREADSHEET_TITLE,
+) {
+  const response = await fetch(`${GOOGLE_SHEETS_API_BASE_URL}/spreadsheets`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      properties: {
+        title,
+      },
+    }),
+    cache: "no-store",
+  });
+  const payload = (await readGoogleResponse(response)) as GoogleSpreadsheetResponse | null;
+
+  if (!response.ok) {
+    throw new Error(
+      extractGoogleErrorMessage(payload, "Unable to create the Google spreadsheet."),
+    );
+  }
+
+  const spreadsheetId = trim(payload?.spreadsheetId);
+  if (!spreadsheetId) {
+    throw new Error("Google created the spreadsheet without returning its ID.");
+  }
+
+  return {
+    spreadsheetId,
+    spreadsheetUrl: trimNullable(payload?.spreadsheetUrl),
+  };
+}
+
+export async function ensureGoogleSpreadsheetForAdmin(
+  accessToken: string,
+  existingSpreadsheetId: string | null | undefined,
+): Promise<ResolvedGoogleSpreadsheet> {
+  const normalizedSpreadsheetId = trim(existingSpreadsheetId);
+  if (normalizedSpreadsheetId) {
+    const existing = await fetchGoogleSpreadsheet(accessToken, normalizedSpreadsheetId);
+    if (existing?.spreadsheetId) {
+      return {
+        spreadsheetId: existing.spreadsheetId.trim(),
+        spreadsheetUrl: trimNullable(existing.spreadsheetUrl),
+        transferWarning: null,
+      };
+    }
+  }
+
+  return {
+    ...(await createGoogleSpreadsheet(accessToken)),
+    transferWarning: null,
+  };
+}
+
+export async function cloneGoogleSpreadsheetToNewAccount(params: {
+  sourceRefreshToken: string;
+  sourceSpreadsheetId: string;
+  targetAccessToken: string;
+}): Promise<ResolvedGoogleSpreadsheet> {
+  const sourceTokenResponse = await refreshGoogleSheetsAccessToken(
+    params.sourceRefreshToken,
+  );
+  const sourceAccessToken = sourceTokenResponse.access_token?.trim();
+  if (!sourceAccessToken) {
+    throw new Error("Unable to refresh the existing Google Sheets connection.");
+  }
+
+  const sourceSpreadsheet = await fetchGoogleSpreadsheetDetails(
+    sourceAccessToken,
+    params.sourceSpreadsheetId,
+  );
+  if (!sourceSpreadsheet?.spreadsheetId) {
+    throw new Error(
+      "Unable to access the existing Google Sheets spreadsheet for transfer.",
+    );
+  }
+
+  const targetSpreadsheetName =
+    trim(sourceSpreadsheet.properties?.title) || DEFAULT_SPREADSHEET_TITLE;
+
+  return cloneGoogleSpreadsheetViaSheetsApi({
+    sourceAccessToken,
+    sourceSpreadsheet,
+    targetAccessToken: params.targetAccessToken,
+    targetSpreadsheetName,
+  });
 }
 
 export async function resolveGoogleSpreadsheetForReconnectedAccount(params: {
@@ -849,7 +887,7 @@ export async function resolveGoogleSpreadsheetForReconnectedAccount(params: {
   existingConnection: GoogleSheetsConnectionRecord | null;
   transferExistingData: boolean;
   targetEmail: string | null;
-}) {
+}): Promise<ResolvedGoogleSpreadsheet> {
   const existingSpreadsheetId = trim(params.existingConnection?.spreadsheetId);
   const hasAccountChanged =
     Boolean(normalizeEmail(params.targetEmail)) &&
@@ -866,6 +904,7 @@ export async function resolveGoogleSpreadsheetForReconnectedAccount(params: {
       return {
         spreadsheetId: accessibleSpreadsheet.spreadsheetId.trim(),
         spreadsheetUrl: trimNullable(accessibleSpreadsheet.spreadsheetUrl),
+        transferWarning: null,
       };
     }
   }
@@ -882,12 +921,25 @@ export async function resolveGoogleSpreadsheetForReconnectedAccount(params: {
         targetAccessToken: params.targetAccessToken,
       });
     } catch (error) {
+      const warningMessage =
+        error instanceof Error
+          ? `Connected the new Google account, but transferring the existing spreadsheet failed. ${error.message} A fresh spreadsheet was created instead.`
+          : "Connected the new Google account, but transferring the existing spreadsheet failed. A fresh spreadsheet was created instead.";
       console.error(
         "Google Sheets transfer failed during account reconnect. Falling back to a fresh spreadsheet.",
+        warningMessage,
         error,
       );
+
+      return {
+        ...(await createGoogleSpreadsheet(params.targetAccessToken)),
+        transferWarning: warningMessage,
+      };
     }
   }
 
-  return createGoogleSpreadsheet(params.targetAccessToken);
+  return {
+    ...(await createGoogleSpreadsheet(params.targetAccessToken)),
+    transferWarning: null,
+  };
 }

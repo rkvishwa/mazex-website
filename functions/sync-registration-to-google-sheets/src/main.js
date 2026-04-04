@@ -868,7 +868,7 @@ async function ensureSheetColumns(
     sheetTitle,
     legacySheetTitles,
   );
-  if (!sheet?.sheetId) {
+  if (typeof sheet?.sheetId !== "number") {
     throw new Error(`Unable to resolve the Google Sheets tab for "${sheetTitle}".`);
   }
 

@@ -10,7 +10,9 @@ import {
   updateGoogleSheetsTransferPreferenceAction,
   type UpdateGoogleSheetsTransferState,
 } from "@/app/admin/actions";
+import type { SiteAdminSummary } from "@/lib/admin-users";
 import type { GoogleSheetsConnection } from "@/lib/google-sheets";
+import AdminAccessManager from "./AdminAccessManager";
 
 const initialState: ChangeAdminPasswordState = {
   error: null,
@@ -96,13 +98,31 @@ function Field({
 }
 
 export default function AdminSettingsForm({
+  adminDirectoryNotice,
+  canDeleteAdmins,
+  canManageAdmins,
+  currentAdminUserId,
   googleSheetsConnection,
   googleSheetsOAuthConfigured,
   googleSheetsTransferOnReconnectEnabled,
+  googleSheetsNotice,
+  siteAdmins,
 }: {
+  adminDirectoryNotice: {
+    status: "error";
+    message: string;
+  } | null;
+  canDeleteAdmins: boolean;
+  canManageAdmins: boolean;
+  currentAdminUserId: string;
   googleSheetsConnection: GoogleSheetsConnection | null;
   googleSheetsOAuthConfigured: boolean;
   googleSheetsTransferOnReconnectEnabled: boolean;
+  googleSheetsNotice: {
+    status: "error" | "success" | "warning";
+    message: string;
+  } | null;
+  siteAdmins: SiteAdminSummary[];
 }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -124,13 +144,20 @@ export default function AdminSettingsForm({
 
   const activeToast = useMemo(
     () =>
-      state.error
+      googleSheetsNotice?.message
+        ? {
+            id: `google-sheets:${googleSheetsNotice.status}:${googleSheetsNotice.message}`,
+            message: googleSheetsNotice.message,
+            status: googleSheetsNotice.status,
+          }
+        : state.error
         ? {
             id: `error:${state.toastKey}`,
             message: state.error,
+            status: "error" as const,
           }
         : null,
-    [state.error, state.toastKey],
+    [googleSheetsNotice, state.error, state.toastKey],
   );
 
   useEffect(() => {
@@ -174,7 +201,13 @@ export default function AdminSettingsForm({
     <>
       {visibleToast ? (
         <div
-          className="fixed left-4 right-4 top-4 z-50 mx-auto flex w-auto max-w-sm items-start gap-3 rounded-lg border border-rose-500/30 bg-rose-50 px-4 py-3 text-sm text-rose-900 shadow-xl sm:left-auto sm:right-6 dark:bg-rose-500/10 dark:text-rose-100"
+          className={`fixed left-4 right-4 top-4 z-50 mx-auto flex w-auto max-w-sm items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-xl sm:left-auto sm:right-6 ${
+            visibleToast.status === "success"
+              ? "border-emerald-500/30 bg-emerald-50 text-emerald-900 dark:bg-emerald-500/10 dark:text-emerald-100"
+              : visibleToast.status === "warning"
+                ? "border-amber-500/30 bg-amber-50 text-amber-900 dark:bg-amber-500/10 dark:text-amber-100"
+              : "border-rose-500/30 bg-rose-50 text-rose-900 dark:bg-rose-500/10 dark:text-rose-100"
+          }`}
           role="status"
           aria-live="polite"
         >
@@ -193,6 +226,7 @@ export default function AdminSettingsForm({
 
       <div className="mx-auto w-full max-w-6xl">
         <div className="space-y-6">
+
           <section
             id={GOOGLE_SHEETS_SECTION_ID}
             className="scroll-mt-28 rounded-xl border border-zinc-200 bg-white px-3 py-5 sm:p-6 md:p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
@@ -348,6 +382,14 @@ export default function AdminSettingsForm({
               ) : null}
             </div>
           </section>
+
+          <AdminAccessManager
+            adminDirectoryNotice={adminDirectoryNotice}
+            admins={siteAdmins}
+            canDeleteAdmins={canDeleteAdmins}
+            canManageAdmins={canManageAdmins}
+            currentAdminUserId={currentAdminUserId}
+          />
 
           <section className="rounded-xl border border-zinc-200 bg-white px-3 py-5 sm:p-6 md:p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <div className="max-w-xl">

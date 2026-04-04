@@ -16,10 +16,15 @@ export type AppwriteConfig = {
   projectId: string;
   apiKey: string;
   adminLabel: string;
+  superAdminLabel: string;
 };
 
 export function getAdminLabel() {
   return process.env.APPWRITE_ADMIN_LABEL?.trim() || "admin";
+}
+
+export function getSuperAdminLabel() {
+  return process.env.APPWRITE_SUPER_ADMIN_LABEL?.trim() || "superadmin";
 }
 
 function normalizeEndpoint(endpoint: string) {
@@ -54,6 +59,7 @@ export function getAppwriteConfig(): AppwriteConfig {
     projectId: projectId!,
     apiKey: apiKey!,
     adminLabel: getAdminLabel(),
+    superAdminLabel: getSuperAdminLabel(),
   };
 }
 

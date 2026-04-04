@@ -582,6 +582,41 @@ function buildGoogleSheetRange(sheetTitle: string, range = "A1") {
   return `${escapeGoogleSheetTitleForRange(sheetTitle)}!${range}`;
 }
 
+function columnIndexToLetter(index: number) {
+  if (!Number.isInteger(index) || index < 0) {
+    throw new Error("Column index must be a non-negative integer.");
+  }
+
+  let value = index;
+  let output = "";
+
+  while (value >= 0) {
+    output = String.fromCharCode((value % 26) + 65) + output;
+    value = Math.floor(value / 26) - 1;
+  }
+
+  return output;
+}
+
+function buildGoogleSheetRangeForValues(
+  sheetTitle: string,
+  values: unknown[][],
+) {
+  const rowCount = values.length;
+  const columnCount = values.reduce((max, row) => {
+    return Math.max(max, Array.isArray(row) ? row.length : 0);
+  }, 0);
+
+  if (rowCount === 0 || columnCount === 0) {
+    return buildGoogleSheetRange(sheetTitle, "A1");
+  }
+
+  return buildGoogleSheetRange(
+    sheetTitle,
+    `A1:${columnIndexToLetter(columnCount - 1)}${rowCount}`,
+  );
+}
+
 async function fetchGoogleSheetValues(
   accessToken: string,
   spreadsheetId: string,
@@ -801,7 +836,7 @@ export async function cloneGoogleSpreadsheetToNewAccount(params: {
     await updateGoogleSheetValues(
       params.targetAccessToken,
       targetSpreadsheet.spreadsheetId,
-      buildGoogleSheetRange(sheet.title),
+      buildGoogleSheetRangeForValues(sheet.title, sheet.values),
       sheet.values,
     );
   }

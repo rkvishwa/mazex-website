@@ -53,7 +53,7 @@ export default function AboutMazeX() {
               </span>
               <p className="theme-copy text-sm italic sm:text-base">
                 A preliminary workshop will introduce micromouse concepts, maze
-                solving techniques, and robot design â€” giving all participants
+                solving techniques, and robot design giving all participants
                 practical experience in robotics, embedded systems, and algorithm
                 development.
               </p>

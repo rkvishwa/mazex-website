@@ -139,19 +139,19 @@ export default function Navbar({
         >
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex h-[5rem] items-center justify-between">
-              <Link
+              <a
                 href={HOME_PATH}
                 className="flex items-center transition-opacity hover:opacity-90"
               >
                 <Image
                   src="/images/brand/logo-white.svg"
-                  alt="MazeX Logo"
+                  alt="MazeX 1.0 - Micromouse Robotics Competition by IEEE RAS & WIE, University of Moratuwa"
                   width={156}
                   height={88}
                   className="h-[3.5rem] w-auto object-contain sm:h-[3.5rem] lg:h-[4rem]"
                   priority
                 />
-              </Link>
+              </a>
 
               <div className="hidden items-center gap-2 lg:gap-4 md:flex">
                 <div

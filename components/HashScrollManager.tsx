@@ -87,11 +87,24 @@ export default function HashScrollManager() {
 
     window.history.scrollRestoration = "manual";
 
-    const scheduleScroll = (hash: string, behavior: ScrollBehavior) => {
+    const scheduleScroll = (hash: string, behavior: ScrollBehavior, clearHashAfter = false) => {
       window.setTimeout(() => {
         window.requestAnimationFrame(() => {
           syncAnchorOffset();
           scrollToHashTarget(hash, behavior);
+
+          if (clearHashAfter) {
+            // Remove the hash from the URL after the scroll animation completes
+            // so that mobile viewport resize events (browser toolbar show/hide)
+            // don't re-snap the page back to the section.
+            const delay = behavior === "smooth" ? 500 : 100;
+            window.setTimeout(() => {
+              if (window.location.hash === hash) {
+                const cleanUrl = `${window.location.pathname}${window.location.search}`;
+                window.history.replaceState(null, "", cleanUrl);
+              }
+            }, delay);
+          }
         });
       }, 0);
     };
@@ -133,6 +146,20 @@ export default function HashScrollManager() {
         const currentUrl = new URL(window.location.href);
         const anchorUrl = new URL(anchor.href, currentUrl);
 
+        const isSamePageNoHash =
+          !anchorUrl.hash &&
+          anchorUrl.origin === currentUrl.origin &&
+          anchorUrl.pathname === currentUrl.pathname &&
+          anchorUrl.search === currentUrl.search;
+
+        // Same page, no hash (e.g. logo linking to "/") → scroll to top
+        if (isSamePageNoHash) {
+          event.preventDefault();
+          window.history.replaceState(null, "", `${currentUrl.pathname}${currentUrl.search}`);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          return;
+        }
+
         isSameDocumentHashLink =
           Boolean(anchorUrl.hash) &&
           anchorUrl.origin === currentUrl.origin &&
@@ -159,20 +186,24 @@ export default function HashScrollManager() {
         window.history.pushState(null, "", nextUrl);
       }
 
-      scheduleScroll(nextHash, "smooth");
+      scheduleScroll(nextHash, "smooth", true);
     };
 
     const handleHashChange = () => {
-      scheduleScroll(window.location.hash, "smooth");
+      scheduleScroll(window.location.hash, "smooth", true);
     };
 
     const handlePopState = () => {
-      scheduleScroll(window.location.hash, "auto");
+      scheduleScroll(window.location.hash, "auto", true);
     };
 
     const handleResize = () => {
       syncAnchorOffset();
 
+      // Do not re-scroll on resize (e.g. mobile browser toolbar collapse/expand).
+      // The hash is cleared from the URL after a nav-link scroll, so this guard
+      // only fires for genuine deep-link / page-load scenarios where the hash
+      // is intentionally present.
       if (!window.location.hash) {
         return;
       }
@@ -183,19 +214,27 @@ export default function HashScrollManager() {
       }, RESIZE_DEBOUNCE_MS);
     };
 
+    const handleBeforeUnload = () => {
+      // Re-enable browser native scroll restoration right before reload/leave
+      // so the browser instantly restores the scroll position on the next load
+      // before rendering, avoiding any visual "jump" from a React useEffect.
+      window.history.scrollRestoration = "auto";
+    };
+
     document.addEventListener("click", handleAnchorClick);
     window.addEventListener("hashchange", handleHashChange);
     window.addEventListener("popstate", handlePopState);
     window.addEventListener("resize", handleResize);
+    window.addEventListener("beforeunload", handleBeforeUnload);
     syncAnchorOffset();
 
     if (isReloadNavigation()) {
       const cleanUrl = `${window.location.pathname}${window.location.search}`;
 
+      // Drop the hash cleanly without overriding the natively restored scroll position
       window.history.replaceState(null, "", cleanUrl);
-      window.scrollTo({ top: 0, behavior: "auto" });
     } else if (window.location.hash) {
-      scheduleScroll(window.location.hash, "auto");
+      scheduleScroll(window.location.hash, "auto", true);
     }
 
     return () => {
@@ -203,6 +242,7 @@ export default function HashScrollManager() {
       window.removeEventListener("hashchange", handleHashChange);
       window.removeEventListener("popstate", handlePopState);
       window.removeEventListener("resize", handleResize);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
 
       if (resizeTimeout) {
         window.clearTimeout(resizeTimeout);

@@ -83,7 +83,7 @@ export const ORGANIZERS = [
         title: "IEEE Robotics & Automation Society",
         subtitle: "Student Branch Chapter — University of Moratuwa",
         description:
-            "Dedicated to advancing robotics and automation through innovation, education, and research. Fostering collaboration through technical events, publications, and research initiatives.",
+            "The IEEE Robotics & Automation Society (RAS) at University of Moratuwa is dedicated to advancing robotics and automation through innovation, education, and research. Fostering collaboration through technical events, publications, and research initiatives.",
         tag: "IEEE RAS",
         logo: "/IEEE_RAS.jpg",
         href: "https://site.ieee.org/sb-moratuwa/chapters/robotics-and-automation-society/",
@@ -92,7 +92,7 @@ export const ORGANIZERS = [
         title: "IEEE Women in Engineering",
         subtitle: "Student Branch Affinity Group — University of Moratuwa",
         description:
-            "Dedicated to uplifting women engineers by promoting gender diversity in engineering. Connecting over 30,000 members in more than 100 countries.",
+            "IEEE Women in Engineering (WIE) at University of Moratuwa is dedicated to uplifting women engineers by promoting gender diversity in engineering. Connecting over 30,000 members in more than 100 countries.",
         tag: "IEEE WIE",
         logo: "/IEEE-WIE.png",
         href: "https://site.ieee.org/sb-moratuwa/chapters/women-in-engineering/",
@@ -206,7 +206,7 @@ export const PAST_EVENTS = [
     {
         title: "Robotics Day",
         description:
-            "An exhibition showcasing University of Moratuwa robotics projects, with keynote sessions from RoboticGen and Zone24 featuring live robot demonstrations.",
+            "An exhibition showcasing University of Moratuwa robotics projects organized by IEEE RAS, with keynote sessions from RoboticGen and Zone24 featuring live robot demonstrations.",
         images: ["/3.jpg", "/3-1.jpg", "/3-2.jpeg"],
     },
     {

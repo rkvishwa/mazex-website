@@ -23,7 +23,11 @@ export default function Sponsorship({
   sponsorOpeningsEnabled: boolean;
 }) {
   return (
-    <section id="sponsors" className="theme-section-alt relative overflow-hidden py-16 sm:py-20 lg:py-24">
+    <section
+      id="sponsors"
+      aria-label="Official Partners and Sponsors of MazeX 1.0"
+      className="theme-section-alt relative overflow-hidden py-16 sm:py-20 lg:py-24"
+    >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -35,6 +39,11 @@ export default function Sponsorship({
           <h2 className="text-3xl font-bold tracking-tight text-[#F8FAFC] sm:text-4xl lg:text-5xl">
             Official Partners
           </h2>
+          {sponsors.length > 0 && (
+            <p className="sr-only">
+              MazeX 1.0 is proudly supported by: {sponsors.map((s) => s.title).join(", ")}.
+            </p>
+          )}
         </motion.div>
 
         <motion.div
@@ -55,6 +64,8 @@ export default function Sponsorship({
                   href={partner.websiteUrl}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label={`Visit ${partner.title} website — Sponsor of MazeX 1.0`}
+                  title={partner.title}
                   className="relative flex h-16 w-48 sm:h-20 sm:w-64 overflow-hidden items-center justify-center rounded-none bg-white p-1 sm:p-2 shadow-[0_0.5rem_1.875rem_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]"
                 >
                   <motion.div
@@ -79,7 +90,11 @@ export default function Sponsorship({
                   />
                 </a>
               ) : (
-                <div className="relative flex h-16 w-48 sm:h-20 sm:w-64 overflow-hidden items-center justify-center rounded-none bg-white p-1 sm:p-2 shadow-[0_0.5rem_1.875rem_rgba(0,0,0,0.12)]">
+                <div
+                  className="relative flex h-16 w-48 sm:h-20 sm:w-64 overflow-hidden items-center justify-center rounded-none bg-white p-1 sm:p-2 shadow-[0_0.5rem_1.875rem_rgba(0,0,0,0.12)]"
+                  title={partner.title}
+                  aria-label={`${partner.title} — Sponsor of MazeX 1.0`}
+                >
                   <motion.div
                     animate={{ translateX: ["-150%", "150%"] }}
                     transition={{
@@ -104,9 +119,9 @@ export default function Sponsorship({
               )}
               
               <div className="mt-8 flex flex-col items-center gap-1 sm:gap-2">
-                <h4 className="text-sm font-semibold tracking-[0.25em] text-white sm:text-base">
+                <h3 className="text-sm font-semibold tracking-[0.25em] text-white sm:text-base">
                   {partner.title.toUpperCase()}
-                </h4>
+                </h3>
                 
                 {partner.websiteUrl ? (
                   <a

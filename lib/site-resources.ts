@@ -12,6 +12,9 @@ export const DEFAULT_DELEGATE_BOOKLET_PATH =
   "/downloads/Delegate_booklet_dummy.pdf";
 export const SPONSOR_OPENINGS_RESOURCE_KEY = "sponsor_openings_enabled";
 export const DEFAULT_SPONSOR_OPENINGS_ENABLED = true;
+export const GOOGLE_SHEETS_TRANSFER_ON_RECONNECT_RESOURCE_KEY =
+  "gsheets_transfer_reconnect";
+export const DEFAULT_GOOGLE_SHEETS_TRANSFER_ON_RECONNECT_ENABLED = true;
 
 type SiteResourceDocument = Models.DefaultDocument & {
   key?: string;
@@ -143,6 +146,24 @@ export async function getSponsorOpeningsEnabled() {
 export async function setSponsorOpeningsEnabled(enabled: boolean) {
   return upsertSiteResourceValue(
     SPONSOR_OPENINGS_RESOURCE_KEY,
+    enabled ? "true" : "false",
+  );
+}
+
+export async function getGoogleSheetsTransferOnReconnectEnabled() {
+  const storedValue = await getSiteResourceValue(
+    GOOGLE_SHEETS_TRANSFER_ON_RECONNECT_RESOURCE_KEY,
+  );
+
+  return parseSiteResourceBoolean(
+    storedValue,
+    DEFAULT_GOOGLE_SHEETS_TRANSFER_ON_RECONNECT_ENABLED,
+  );
+}
+
+export async function setGoogleSheetsTransferOnReconnectEnabled(enabled: boolean) {
+  return upsertSiteResourceValue(
+    GOOGLE_SHEETS_TRANSFER_ON_RECONNECT_RESOURCE_KEY,
     enabled ? "true" : "false",
   );
 }

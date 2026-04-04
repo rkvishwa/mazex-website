@@ -225,6 +225,14 @@ export default function AdminDashboardShell({
           <main className="flex-1 px-3 py-5 sm:p-6 md:p-8 lg:p-10 max-w-7xl mx-auto w-full">
             {children}
           </main>
+
+          <footer className="py-8 px-6 mt-auto border-t border-zinc-200/30 dark:border-zinc-800/40">
+            <div className="flex justify-center items-center">
+              <p className="text-[9px] uppercase tracking-[0.3em] font-medium text-zinc-400/80 dark:text-zinc-500/60">
+                Powered by <span className="text-zinc-900 dark:text-zinc-200 font-bold tracking-normal">KNURDZ</span>
+              </p>
+            </div>
+          </footer>
         </div>
       </div>
     </div>

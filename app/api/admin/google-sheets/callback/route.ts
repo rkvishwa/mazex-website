@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { buildAppUrl } from "@/lib/app-url";
 import { getCurrentAdmin } from "@/lib/admin-auth";
 import {
-  ensureGoogleSpreadsheetForAdmin,
   exchangeGoogleOAuthCode,
   fetchGoogleUserInfo,
   getSharedGoogleSheetsConnectionDocumentId,
   getSharedGoogleSheetsConnectionRecord,
   isGoogleSheetsOAuthConfigured,
   normalizeGoogleSheetsReturnToPath,
+  resolveGoogleSpreadsheetForReconnectedAccount,
   upsertGoogleSheetsConnection,
 } from "@/lib/google-sheets";
+import { getGoogleSheetsTransferOnReconnectEnabled } from "@/lib/site-resources";
 
 export const runtime = "nodejs";
 
@@ -21,6 +22,10 @@ type OAuthStateCookie = {
   adminUserId: string;
   returnTo: string;
 };
+
+function normalizeEmail(value: string | null | undefined) {
+  return value?.trim().toLowerCase() || "";
+}
 
 function parseStateCookie(value: string | undefined): OAuthStateCookie | null {
   if (!value) return null;
@@ -100,22 +105,33 @@ export async function GET(request: NextRequest) {
       code,
       redirectUri,
     });
-    const refreshToken =
-      tokenResponse.refresh_token?.trim() || existingConnection?.refreshToken || "";
-
-    if (!refreshToken) {
-      throw new Error("Google did not return a refresh token for Sheets access.");
-    }
-
     const accessToken = tokenResponse.access_token?.trim();
     if (!accessToken) {
       throw new Error("Google did not return an access token.");
     }
 
-    const [userInfo, spreadsheet] = await Promise.all([
+    const [userInfo, transferExistingData] = await Promise.all([
       fetchGoogleUserInfo(accessToken),
-      ensureGoogleSpreadsheetForAdmin(accessToken, existingConnection?.spreadsheetId),
+      getGoogleSheetsTransferOnReconnectEnabled(),
     ]);
+    const hasGoogleAccountChanged =
+      Boolean(normalizeEmail(userInfo.email)) &&
+      Boolean(normalizeEmail(existingConnection?.email)) &&
+      normalizeEmail(userInfo.email) !== normalizeEmail(existingConnection?.email);
+    const refreshToken =
+      tokenResponse.refresh_token?.trim() ||
+      (!hasGoogleAccountChanged ? existingConnection?.refreshToken : "") ||
+      "";
+
+    if (!refreshToken) {
+      throw new Error("Google did not return a refresh token for Sheets access.");
+    }
+    const spreadsheet = await resolveGoogleSpreadsheetForReconnectedAccount({
+      targetAccessToken: accessToken,
+      existingConnection,
+      transferExistingData,
+      targetEmail: userInfo.email,
+    });
 
     await upsertGoogleSheetsConnection({
       connectionDocumentId: getSharedGoogleSheetsConnectionDocumentId(),

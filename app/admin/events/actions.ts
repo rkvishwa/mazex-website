@@ -384,14 +384,22 @@ export async function updateAdminEventsAction(
       const currentConfig = currentConfigs[event.key] as WorkshopEventConfig;
 
       const formId = readString(formData, `${event.key}__formId`) || null;
+      const rawEventDate = readString(formData, `${event.key}__eventDate`);
       const rawOpenDate = readString(formData, `${event.key}__openDate`);
       const rawCloseDate = readString(formData, `${event.key}__closeDate`);
+      const eventDate = rawEventDate
+        ? readOptionalDate(formData, `${event.key}__eventDate`)
+        : null;
       const openDate = rawOpenDate
         ? readOptionalDate(formData, `${event.key}__openDate`)
         : null;
       const closeDate = rawCloseDate
         ? readOptionalDate(formData, `${event.key}__closeDate`)
         : null;
+
+      if (rawEventDate && !eventDate) {
+        throw new Error(`Enter a valid workshop date for ${event.title} in yyyy/mm/dd format.`);
+      }
 
       if (rawOpenDate && !openDate) {
         throw new Error(`Enter a valid open date for ${event.title} in yyyy/mm/dd format.`);
@@ -429,6 +437,7 @@ export async function updateAdminEventsAction(
         formId,
         openDate,
         closeDate,
+        eventDate: eventDate && eventDate !== event.defaultDate ? eventDate : null,
       };
 
       if (config.enabled && !config.formId) {
@@ -461,6 +470,7 @@ export async function updateAdminEventsAction(
           formId: null,
           openDate: null,
           closeDate: null,
+          eventDate: null,
         },
       workshop_microcontrollers:
         workshopConfigs.find(([key]) => key === "workshop_microcontrollers")?.[1] ??
@@ -469,6 +479,7 @@ export async function updateAdminEventsAction(
           formId: null,
           openDate: null,
           closeDate: null,
+          eventDate: null,
         },
       workshop_pid_control:
         workshopConfigs.find(([key]) => key === "workshop_pid_control")?.[1] ??
@@ -477,6 +488,7 @@ export async function updateAdminEventsAction(
           formId: null,
           openDate: null,
           closeDate: null,
+          eventDate: null,
         },
       workshop_maze_solving:
         workshopConfigs.find(([key]) => key === "workshop_maze_solving")?.[1] ??
@@ -485,6 +497,7 @@ export async function updateAdminEventsAction(
           formId: null,
           openDate: null,
           closeDate: null,
+          eventDate: null,
         },
     };
 

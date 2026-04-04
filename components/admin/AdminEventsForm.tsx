@@ -225,7 +225,7 @@ function EventCard({
 
           <h2 className="mt-4 text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             {event.kind === "workshop"
-              ? `${event.title} - ${formatStoredDateForInput(event.defaultDate)}`
+              ? `${event.title} - ${formatStoredDateForInput(event.eventDate ?? event.defaultDate)}`
               : event.title}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
@@ -265,7 +265,11 @@ function EventCard({
         </div>
       </div>
 
-      <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+      <div
+        className={`mt-6 grid gap-5 md:grid-cols-2 ${
+          event.kind === "competition" ? "lg:grid-cols-3" : "lg:grid-cols-4"
+        }`}
+      >
         <FieldShell
           label={event.kind === "competition" ? "Competition form" : "Workshop form"}
           description={`Only ${event.requiredFormKind} forms are available here. Draft forms cannot be linked.`}
@@ -318,6 +322,21 @@ function EventCard({
           </>
         ) : (
           <>
+            <FieldShell
+              label="Workshop date"
+              description="Shown on the home timeline. Leave blank to use the default date."
+            >
+              <FormattedPickerInput
+                key={`${event.key}:eventDate:${event.eventDate ?? event.defaultDate}`}
+                name={`${event.key}__eventDate`}
+                mode="date"
+                defaultValue={event.eventDate ?? event.defaultDate}
+                placeholder="yyyy/mm/dd"
+                inputMode="numeric"
+                ariaLabel={`Select the workshop date for ${event.title}`}
+                className="block h-11 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
+              />
+            </FieldShell>
             <FieldShell label="Open date">
               <FormattedPickerInput
                 key={`${event.key}:open:${event.openDate ?? ""}`}
@@ -373,6 +392,7 @@ function getEventRenderKey(event: AdminSiteEventItem) {
     event.key,
     event.enabled ? "enabled" : "disabled",
     event.formId ?? "none",
+    event.eventDate ?? "default",
     event.openDate ?? "none",
     event.closeDate ?? "none",
     event.linkedForm?.slug ?? "no-slug",
@@ -443,7 +463,7 @@ export default function AdminEventsForm({
               Manage public events and registration links
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-              Competition dates and workshop registration windows are managed here, while workshop timeline dates on the home page stay hard-coded.
+              Competition dates, workshop registration windows, and workshop timeline dates are managed here.
               Form Builder still owns the form schema, fields, and content. Each card saves independently.
             </p>
           </div>

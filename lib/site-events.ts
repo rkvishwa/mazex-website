@@ -163,6 +163,7 @@ function normalizeWorkshopConfig(
     formId: normalizeString(record.formId),
     openDate: normalizeStoredDate(record.openDate),
     closeDate: normalizeStoredDate(record.closeDate),
+    eventDate: normalizeStoredDate(record.eventDate),
   };
 }
 
@@ -197,24 +198,28 @@ export function getDefaultSiteEventConfigs() {
       formId: null,
       openDate: null,
       closeDate: null,
+      eventDate: null,
     },
     workshop_microcontrollers: {
       enabled: false,
       formId: null,
       openDate: null,
       closeDate: null,
+      eventDate: null,
     },
     workshop_pid_control: {
       enabled: false,
       formId: null,
       openDate: null,
       closeDate: null,
+      eventDate: null,
     },
     workshop_maze_solving: {
       enabled: false,
       formId: null,
       openDate: null,
       closeDate: null,
+      eventDate: null,
     },
   };
 
@@ -449,7 +454,7 @@ function resolveWorkshopEvent(
   currentDate: string | null,
 ): ResolvedWorkshopEvent {
   const effectiveConfig = getAutoManagedSiteEventConfig(config, currentDate);
-  const date = definition.defaultDate;
+  const date = effectiveConfig.eventDate ?? definition.defaultDate;
   const registerHref = linkedForm?.slug ? `/${linkedForm.slug}` : null;
   const openDate = effectiveConfig.openDate ?? getStoredDateFromIso(linkedForm?.openAt);
   const closeDate = effectiveConfig.closeDate ?? getStoredDateFromIso(linkedForm?.closeAt);
@@ -519,6 +524,7 @@ export async function getResolvedSiteEvents(): Promise<ResolvedSiteEvents> {
       linkedFormMissing: competition.linkedFormMissing,
     },
     ...WORKSHOP_SITE_EVENTS.map((definition, index) => {
+      const config = configs[definition.key] as WorkshopEventConfig;
       const workshop = workshops[index];
       const linkedForm = workshop.formId
         ? formsById.get(workshop.formId) ?? null
@@ -535,6 +541,7 @@ export async function getResolvedSiteEvents(): Promise<ResolvedSiteEvents> {
         formId: workshop.formId,
         openDate: workshop.openDate,
         closeDate: workshop.closeDate,
+        eventDate: config.eventDate,
         defaultDate: definition.defaultDate,
         linkedForm: toLinkedForm(linkedForm),
         linkedFormMissing: workshop.linkedFormMissing,

@@ -23,6 +23,7 @@ export type WorkshopEventConfig = {
   formId: string | null;
   openDate: string | null;
   closeDate: string | null;
+  eventDate: string | null;
 };
 
 export type SiteEventConfig = CompetitionEventConfig | WorkshopEventConfig;
@@ -254,6 +255,7 @@ export type AdminWorkshopEventItem = {
   formId: string | null;
   openDate: string | null;
   closeDate: string | null;
+  eventDate: string | null;
   defaultDate: string;
   linkedForm: SiteEventLinkedForm | null;
   linkedFormMissing: boolean;

@@ -21,6 +21,7 @@ import {
   bulkSaveRegistrationFieldsAction,
   type RegistrationAdminActionState,
 } from "@/app/admin/registrations/actions";
+import { parseDisplayDateInput, getStoredDateFromIso } from "@/lib/date-format";
 import type {
   FieldDefinition, FieldType,
   FormDefinition, FormWithFields,
@@ -282,13 +283,13 @@ function BannerArea({ form, bannerUrl }: { form: FormDefinition; bannerUrl: stri
   );
 }
 
-function SaveSettingsButton() {
+function SaveSettingsButton({ disabled }: { disabled?: boolean }) {
   const { pending } = useFormStatus();
 
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={pending || disabled}
       className="inline-flex items-center gap-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus:ring-zinc-300"
     >
       {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
@@ -498,6 +499,8 @@ function SettingsPanel({
     const syncableFieldIds = getSyncableGoogleSheetsFieldIds(form);
     return form.googleSheetsSelectedFieldIds.filter((fieldId) => syncableFieldIds.has(fieldId));
   });
+  const [openAtValue, setOpenAtValue] = useState(() => form.openAt ?? "");
+  const [closeAtValue, setCloseAtValue] = useState(() => form.closeAt ?? "");
   const [settingsState, settingsDispatch] = useActionState(updateRegistrationFormSettingsAction, IDLE);
   const [deleteState, deleteDispatch] = useActionState(deleteRegistrationFormAction, IDLE);
   const st = useToast(settingsState);
@@ -567,6 +570,25 @@ function SettingsPanel({
     form.googleSheetsAdminUserId ?? "",
     form.googleSheetsSheetTitle ?? "",
   ].join(":");
+
+  const hasConfirmationEmailIssue = confirmationEmailEnabled && (emailFieldOptions.length === 0 || nameFieldOptions.length === 0);
+  const hasGoogleSheetsSyncIssue = googleSheetsSyncEnabled && googleSheetsFieldOptions.length === 0;
+
+  const colomboToday = getStoredDateFromIso(new Date().toISOString());
+
+  const checkPastDateIssue = (val: string, orig: string | null) => {
+    if (!val || !colomboToday) return false;
+    const parsed = parseDisplayDateInput(val);
+    if (!parsed) return false;
+    const origParsed = orig ? (parseDisplayDateInput(orig) ?? orig) : null;
+    if (parsed === origParsed) return false; 
+    return parsed < colomboToday;
+  };
+
+  const hasOpenAtPastIssue = checkPastDateIssue(openAtValue, form.openAt);
+  const hasCloseAtPastIssue = checkPastDateIssue(closeAtValue, form.closeAt);
+
+  const hasSettingsIssue = hasConfirmationEmailIssue || hasGoogleSheetsSyncIssue || hasOpenAtPastIssue || hasCloseAtPastIssue;
 
   useEffect(() => {
     if (!open || !canUseDom) return;
@@ -710,24 +732,42 @@ function SettingsPanel({
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Open date</label>
+                <div className="mb-1 flex items-center justify-between">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Open date</label>
+                  {hasOpenAtPastIssue && (
+                    <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                      <ShieldAlert className="h-3 w-3 shrink-0" />
+                      Past date not allowed
+                    </span>
+                  )}
+                </div>
                 <FormattedPickerInput
                   key={`openAt:${form.openAt ?? ""}`}
                   name="openAt"
                   mode="date"
                   defaultValue={form.openAt}
+                  onValueChange={setOpenAtValue}
                   placeholder="yyyy/mm/dd"
                   inputMode="numeric"
                   ariaLabel={`Select the open date for ${form.title}`}
                   className="block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400" />
               </div>
               <div>
-                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Close date</label>
+                 <div className="mb-1 flex items-center justify-between">
+                   <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Close date</label>
+                   {hasCloseAtPastIssue && (
+                    <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                      <ShieldAlert className="h-3 w-3 shrink-0" />
+                      Past date not allowed
+                    </span>
+                   )}
+                 </div>
                 <FormattedPickerInput
                   key={`closeAt:${form.closeAt ?? ""}`}
                   name="closeAt"
                   mode="date"
                   defaultValue={form.closeAt}
+                  onValueChange={setCloseAtValue}
                   placeholder="yyyy/mm/dd"
                   inputMode="numeric"
                   ariaLabel={`Select the close date for ${form.title}`}
@@ -1031,7 +1071,7 @@ function SettingsPanel({
                       >
                         Cancel
                       </button>
-                      <SaveSettingsButton />
+                      <SaveSettingsButton disabled={hasSettingsIssue} />
                     </div>
                   </div>
                 </div>
@@ -1505,6 +1545,13 @@ function FieldBuilder({ form }: { form: FormWithFields }) {
     setIsMounted(true);
   }, []);
 
+  const localEmailFieldOptions = fields.filter((field) => field.scope === "submission" && field.type === "email");
+  const localNameFieldOptions = fields.filter((field) => field.scope === "submission" && field.type === "text");
+  const localGoogleSheetsFieldOptions = fields.filter((field) => field.type !== "page_break");
+  const hasSettingsIssueInFields = 
+    (form.confirmationEmailEnabled && (localEmailFieldOptions.length === 0 || localNameFieldOptions.length === 0)) ||
+    (form.googleSheetsSyncEnabled && localGoogleSheetsFieldOptions.length === 0);
+
   if (form.fields !== fieldsVersion) {
     setFieldsVersion(form.fields);
     if (!isDirty) {
@@ -1641,15 +1688,15 @@ function FieldBuilder({ form }: { form: FormWithFields }) {
        </div>
 
       {/* Global Save Button */}
-      <div className={`sticky bottom-6 z-20 mx-auto flex w-[95%] max-w-xl flex-col items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-white/95 p-4 shadow-2xl backdrop-blur-md transition-all duration-300 dark:border-zinc-700 dark:bg-zinc-800/95 sm:w-[90%] sm:flex-row sm:gap-3 sm:rounded-xl sm:p-3 sm:pr-4 ${isMounted && isDirty ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0 pointer-events-none"}`}>
+      <div className={`sticky bottom-6 z-20 mx-auto flex w-[95%] max-w-xl flex-col items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-white/95 p-4 shadow-2xl backdrop-blur-md transition-all duration-300 dark:border-zinc-700 dark:bg-zinc-800/95 sm:w-[90%] sm:flex-row sm:gap-3 sm:rounded-xl sm:p-3 sm:pr-4 ${isMounted && (isDirty || hasSettingsIssueInFields) ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0 pointer-events-none"}`}>
         <p className="flex items-center gap-2 text-sm font-semibold text-zinc-600 dark:text-zinc-300 sm:pl-3 sm:font-medium">
-          <ShieldAlert className="h-4 w-4 text-amber-500 sm:hidden" />
-          You have unsaved changes.
+          <ShieldAlert className={`h-4 w-4 ${hasSettingsIssueInFields ? "text-rose-500" : "text-amber-500"} sm:hidden`} />
+          {hasSettingsIssueInFields ? "Form settings issue." : "You have unsaved changes."}
         </p>
         <button
           type="button"
           onClick={handleBulkSave}
-          disabled={isSaving}
+          disabled={isSaving || hasSettingsIssueInFields}
           className="flex w-full items-center justify-center gap-2 rounded-md bg-zinc-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus:ring-zinc-300 dark:focus:ring-offset-zinc-800 sm:w-auto sm:py-2.5"
         >
           {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}

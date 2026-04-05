@@ -21,6 +21,7 @@ type FormattedPickerInputProps = {
   disabled?: boolean;
   required?: boolean;
   pattern?: string;
+  onValueChange?: (value: string) => void;
 };
 
 type PickerElement = HTMLInputElement & {
@@ -51,6 +52,7 @@ export default function FormattedPickerInput({
   disabled = false,
   required = false,
   pattern,
+  onValueChange,
 }: FormattedPickerInputProps) {
   const pickerRef = useRef<PickerElement | null>(null);
   const [textValue, setTextValue] = useState(() =>
@@ -83,6 +85,7 @@ export default function FormattedPickerInput({
         onChange={(event) => {
           const nextValue = event.target.value;
           setTextValue(nextValue);
+          onValueChange?.(nextValue);
 
           const nextPickerValue = toPickerValue(mode, nextValue);
           if (nextPickerValue || !nextValue.trim()) {
@@ -115,7 +118,9 @@ export default function FormattedPickerInput({
         onChange={(event) => {
           const nextPickerValue = event.target.value;
           setPickerValue(nextPickerValue);
-          setTextValue(toDisplayValue(mode, nextPickerValue));
+          const displayVal = toDisplayValue(mode, nextPickerValue);
+          setTextValue(displayVal);
+          onValueChange?.(displayVal);
         }}
         tabIndex={-1}
         aria-label={ariaLabel ?? (mode === "date" ? "Select date" : "Select date and time")}

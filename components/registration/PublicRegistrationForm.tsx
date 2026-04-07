@@ -23,6 +23,49 @@ const initialState: SubmitRegistrationState = {
   toastKey: 0,
 };
 
+// Helper function to detect and convert URLs to clickable links
+function renderMessageWithLinks(message: string) {
+  // Regular expression to match URLs (with or without protocol)
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9][a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s]*)/g;
+  
+  const parts = message.split(urlRegex);
+  const matches = message.match(urlRegex);
+  
+  return parts.map((part, index) => {
+    // Check if this part is a URL
+    if (matches && matches.includes(part)) {
+      // Ensure URL has protocol
+      const href = part.startsWith('http') ? part : `https://${part}`;
+      
+      return (
+        <a
+          key={index}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 break-all text-emerald-400 underline decoration-emerald-400/30 underline-offset-4 transition-all hover:text-emerald-300 hover:decoration-emerald-300/50 sm:break-normal"
+        >
+          <span className="break-all">{part}</span>
+          <svg 
+            className="h-3.5 w-3.5 flex-shrink-0 sm:h-4 sm:w-4" 
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor" 
+            strokeWidth={2}
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" 
+            />
+          </svg>
+        </a>
+      );
+    }
+    return part;
+  });
+}
+
 function fieldInputClass(hasError: boolean) {
   return `w-full rounded-xl bg-white/[0.03] px-4 py-3 text-[0.9375rem] text-zinc-100 outline-none transition-all placeholder:text-zinc-500 hover:bg-white/[0.04] focus:bg-white/[0.05] border border-white/5 ${
     hasError
@@ -535,33 +578,33 @@ export default function PublicRegistrationForm({
 
   if (state.status === "success") {
     return (
-      <div id="registration-success-message" className="relative flex flex-col items-center justify-center overflow-hidden p-12 py-24 text-center sm:p-16">
+      <div id="registration-success-message" className="relative flex flex-col items-center justify-center overflow-hidden px-4 py-12 text-center sm:p-12 sm:py-16 lg:p-16 lg:py-24">
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div className="h-[18.75rem] w-[18.75rem] rounded-full bg-emerald-500/10 blur-[6.25rem]" />
         </div>
 
-        <div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-[0_0_2.5rem_rgba(16,185,129,0.2)]">
-          <Check className="h-10 w-10 stroke-[2.5]" />
+        <div className="relative flex h-16 w-16 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-[0_0_2.5rem_rgba(16,185,129,0.2)] sm:h-20 sm:w-20">
+          <Check className="h-8 w-8 stroke-[2.5] sm:h-10 sm:w-10" />
         </div>
         
-        <h2 className="relative mt-8 text-3xl font-bold tracking-tight text-white sm:text-5xl">
+        <h2 className="relative mt-6 text-2xl font-bold tracking-tight text-white sm:mt-8 sm:text-3xl lg:text-5xl">
           You're all set!
         </h2>
         
-        <p className="relative mt-4 max-w-lg text-lg leading-relaxed text-slate-300">
-          {state.message}
+        <p className="relative mt-3 w-full max-w-[90vw] px-2 text-base leading-relaxed text-slate-300 sm:mt-4 sm:max-w-lg sm:text-lg">
+          {state.message ? renderMessageWithLinks(state.message) : null}
         </p>
         
-        <div className="relative mt-12 flex flex-col justify-center gap-4 w-full sm:w-auto sm:flex-row">
+        <div className="relative mt-8 flex w-full max-w-md flex-col justify-center gap-4 px-4 sm:mt-12 sm:w-auto sm:max-w-none sm:flex-row sm:px-0">
           <Link
             href="/#register"
-            className="inline-flex w-full items-center justify-center rounded-xl bg-white px-8 py-3.5 text-[0.9375rem] font-medium tracking-wide text-black transition-all hover:bg-zinc-200 sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-xl bg-white px-6 py-3.5 text-[0.9375rem] font-medium tracking-wide text-black transition-all hover:bg-zinc-200 sm:w-auto sm:px-8"
           >
             Explore more events
           </Link>
           <Link
             href="/"
-            className="inline-flex w-full items-center justify-center rounded-xl border border-white/5 bg-white/5 px-8 py-3.5 text-[0.9375rem] font-medium tracking-wide text-white transition-all hover:bg-white/10 sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-xl border border-white/5 bg-white/5 px-6 py-3.5 text-[0.9375rem] font-medium tracking-wide text-white transition-all hover:bg-white/10 sm:w-auto sm:px-8"
           >
             Return to home
           </Link>

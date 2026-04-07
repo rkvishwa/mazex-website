@@ -125,7 +125,7 @@ export default function FormSelectorDropdown({
         <button
           type="button"
           onClick={onNew}
-          className="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-zinc-200 bg-white px-5 py-2.5 text-sm font-bold text-zinc-600 transition-all hover:border-zinc-900 hover:text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400 dark:hover:border-zinc-100 dark:hover:shadow-[0_0_0.9375rem_rgba(255,255,255,0.05)]"
+          className="flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-zinc-200 bg-white px-5 py-2.5 text-sm font-bold text-zinc-600 transition-all hover:border-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400 dark:hover:border-zinc-100 dark:hover:shadow-[0_0_0.9375rem_rgba(255,255,255,0.05)]"
         >
           <Plus className="h-4 w-4" />
           <span>New Form</span>

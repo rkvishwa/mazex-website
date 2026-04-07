@@ -316,7 +316,12 @@ export default function AdminSponsorsForm({
   }
 
   function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0] ?? null;
+    const files = event.target.files;
+    if (!files || files.length === 0) {
+      syncSelectedFileToInput(imageInputRef.current, selectedFile);
+      return;
+    }
+    const file = files[0];
     handleImageSelection(file);
   }
 
@@ -530,37 +535,48 @@ export default function AdminSponsorsForm({
                   </span>
                 </div>
 
-                {previewSrc ? (
-                  <div className="mt-6 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+              </label>
+
+              {previewSrc ? (
+                <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                  <div className="flex items-center justify-between">
                     <p className="text-[0.625rem] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                       Preview
                     </p>
-                    <div className="mt-3 flex min-h-28 items-center justify-center rounded-lg bg-white p-4 shadow-sm dark:bg-zinc-950 dark:border dark:border-zinc-800">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={previewSrc}
-                        alt="Sponsor preview"
-                        className="max-h-20 w-full object-contain"
-                      />
-                    </div>
-                    {previewName ? (
-                      <p className="mt-3 truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                        {previewName}
-                      </p>
-                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => handleImageSelection(null)}
+                      className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Remove
+                    </button>
                   </div>
-                ) : null}
+                  <div className="mt-3 flex min-h-28 items-center justify-center rounded-lg bg-white p-4 shadow-sm dark:bg-zinc-950 dark:border dark:border-zinc-800">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={previewSrc}
+                      alt="Sponsor preview"
+                      className="max-h-20 w-full object-contain"
+                    />
+                  </div>
+                  {previewName ? (
+                    <p className="mt-3 truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                      {previewName}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
 
-                <input
-                  ref={handleImageInputRef}
-                  id="image"
-                  name="image"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="sr-only"
-                />
-              </label>
+              <input
+                ref={handleImageInputRef}
+                id="image"
+                name="image"
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="sr-only"
+              />
             </div>
 
             <SubmitButton />

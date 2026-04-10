@@ -14,32 +14,39 @@ export const openOptimisticDrawer = (id: string | null) => {
 };
 
 export function OptimisticSubmissionDrawer({
-  form,
+  forms,
+  mode,
+  formSlug,
+  commonFormSlugs,
   submissions,
   selectedSubmission,
 }: {
-  form: FormWithFields;
+  forms: FormWithFields[];
+  mode: "single" | "common";
+  formSlug: string | null;
+  commonFormSlugs: string[];
   submissions: SubmissionDetail[];
   selectedSubmission: SubmissionDetail | null;
 }) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
+  const formById = new Map(forms.map((form) => [form.id, form] as const));
 
   useEffect(() => {
-    setMounted(true);
     dispatchOptimisticOpen = setLoadingId;
     return () => { dispatchOptimisticOpen = null; };
   }, []);
 
   const closeHref = buildPageHref({
-    slug: form.slug,
+    slug: mode === "common" ? null : formSlug,
+    mode,
+    commonFormSlugs,
     from: searchParams.get("from"),
     to: searchParams.get("to"),
     page: Number(searchParams.get("page") ?? "1"),
     pageSize: searchParams.get("pageSize") === "all" ? "all" : (searchParams.get("pageSize") ? Number(searchParams.get("pageSize")) : null),
-    searchField: searchParams.get("searchField"),
+    searchField: mode === "common" ? null : searchParams.get("searchField"),
     searchQuery: searchParams.get("searchQuery"),
   });
 
@@ -48,7 +55,7 @@ export function OptimisticSubmissionDrawer({
     router.push(closeHref, { scroll: false });
   };
 
-  if (!mounted) return null;
+  if (typeof document === "undefined") return null;
   const portalRoot = document.getElementById("admin-drawer-portal");
   if (!portalRoot) return null;
 
@@ -56,6 +63,7 @@ export function OptimisticSubmissionDrawer({
   const submissionToRender = 
     (loadingId ? submissions.find((s) => s.id === loadingId) : null) ?? 
     selectedSubmission;
+  const form = submissionToRender ? formById.get(submissionToRender.formId) ?? null : null;
 
   return createPortal(
     <AnimatePresence>

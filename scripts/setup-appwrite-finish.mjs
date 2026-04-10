@@ -33,6 +33,8 @@ const GOOGLE_SHEETS_FORM_SYNCS_COL =
   env.APPWRITE_COLLECTION_GOOGLE_SHEETS_FORM_SYNCS || "google_sheets_form_syncs";
 const GOOGLE_SHEETS_CONNECTIONS_COL =
   env.APPWRITE_COLLECTION_GOOGLE_SHEETS_CONNECTIONS || "google_sheets_connections";
+const SHORT_LINKS_COL =
+  env.APPWRITE_COLLECTION_SHORT_LINKS || "short_links";
 const BUCKET_ID  = env.APPWRITE_BUCKET_FORM_BANNERS || "form_banners";
 const FILES_BUCKET_ID = env.APPWRITE_BUCKET_REGISTRATION_FILES || "registration_files";
 const REGISTRATION_FILE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "pdf", "doc", "docx"];
@@ -62,6 +64,7 @@ async function ensureCollection(id, name) {
 async function createAttrs(colId, attrs) {
   await Promise.all(attrs.map((attr) => safe(() => {
     if (attr.t === "str") return db.createStringAttribute(DB_ID, colId, attr.key, attr.size ?? 255, attr.req ?? false, attr.def ?? null, false, attr.enc ?? false);
+    if (attr.t === "int") return db.createIntegerAttribute(DB_ID, colId, attr.key, attr.req ?? false, attr.min ?? null, attr.max ?? null, attr.def ?? null);
     if (attr.t === "bool") return db.createBooleanAttribute(DB_ID, colId, attr.key, attr.req ?? false, attr.def ?? false);
   })));
   console.log(`  ✓ verified ${attrs.length} attributes on ${colId}`);
@@ -228,6 +231,28 @@ await waitAvailable(GOOGLE_SHEETS_CONNECTIONS_COL, [
   "spreadsheetId",
   "spreadsheetUrl",
 ]);
+
+await ensureCollection(SHORT_LINKS_COL, "Short Links");
+await createAttrs(SHORT_LINKS_COL, [
+  { t:"str", key:"shortCode", size:64, req:true },
+  { t:"str", key:"destinationUrl", size:4096, req:true },
+  { t:"str", key:"expiresAt", size:64 },
+  { t:"bool", key:"isActive", def:true },
+  { t:"int", key:"visitCount", min:0, max:2147483647, def:0 },
+  { t:"str", key:"lastVisitedAt", size:64 },
+  { t:"str", key:"createdByAdminUserId", size:255, req:true },
+]);
+await waitAvailable(SHORT_LINKS_COL, [
+  "shortCode",
+  "destinationUrl",
+  "expiresAt",
+  "isActive",
+  "visitCount",
+  "lastVisitedAt",
+  "createdByAdminUserId",
+]);
+await ensureIndex(SHORT_LINKS_COL, "short_code_unique", "unique", ["shortCode"]);
+await ensureIndex(SHORT_LINKS_COL, "by_creator", "key", ["createdByAdminUserId"]);
 
 // Create form_banners bucket
 await ensureBucket(BUCKET_ID, "Form Banners");

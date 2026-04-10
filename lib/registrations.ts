@@ -414,26 +414,54 @@ function mapSubmissionDoc(
 
   const form = formsById.get(formId);
   const answers = parseJson<Record<string, SubmissionAnswerValue>>(doc.answersJson, {});
-  
+
   let displayTitle = "Submission";
   let displaySubtitle: string | null = null;
-  
+
+  const readAnswerText = (value: SubmissionAnswerValue | undefined) => {
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    return trimmed || null;
+  };
+
+  const joinContactValues = (...values: Array<string | null>) => {
+    const parts = values.filter((value): value is string => Boolean(value));
+    return parts.length > 0 ? parts.join(" · ") : null;
+  };
+
   if (form && "fields" in form) {
-    const textFields = (form as any).fields.filter((f: any) => f.scope === "submission" && (f.type === "text" || f.type === "textarea" || f.type === "email" || f.type === "tel"));
-    const nameField = textFields.find((f: any) => f.label.toLowerCase().includes("name")) || textFields[0];
-    const emailField = textFields.find((f: any) => f.type === "email") || textFields.find((f: any) => f !== nameField);
-    
-    if (nameField && answers[nameField.key]) {
-      displayTitle = String(answers[nameField.key]).trim();
+    const textFields = form.fields.filter(
+      (field) =>
+        field.scope === "submission" &&
+        (field.type === "text" ||
+          field.type === "textarea" ||
+          field.type === "email" ||
+          field.type === "tel"),
+    );
+    const nameField =
+      textFields.find((field) => field.label.toLowerCase().includes("name")) ??
+      textFields.find((field) => field.type === "text") ??
+      textFields.find((field) => field.type === "textarea") ??
+      textFields[0];
+    const emailField = textFields.find((field) => field.type === "email") ?? null;
+    const phoneField = textFields.find((field) => field.type === "tel") ?? null;
+
+    const titleValue = nameField ? readAnswerText(answers[nameField.key]) : null;
+    const emailValue = emailField ? readAnswerText(answers[emailField.key]) : null;
+    const phoneValue = phoneField ? readAnswerText(answers[phoneField.key]) : null;
+
+    if (titleValue) {
+      displayTitle = titleValue;
     }
-    if (emailField && answers[emailField.key]) {
-      displaySubtitle = String(answers[emailField.key]).trim() || null;
-    }
+
+    displaySubtitle = joinContactValues(emailValue, phoneValue);
   }
 
   // Fallback if no specific fields matched, but we have answers
   if (displayTitle === "Submission" && Object.keys(answers).length > 0) {
-    const values = Object.values(answers).filter(v => typeof v === 'string' && v.trim() !== '');
+    const values = Object.values(answers).filter(
+      (value): value is string => typeof value === "string" && value.trim() !== "",
+    );
     if (values.length > 0) {
       displayTitle = String(values[0]).trim();
     }
@@ -1454,6 +1482,72 @@ function normalizeDateFilter(value: string | null | undefined, endOfDay = false)
   return normalizeDateFilterInput(value, endOfDay);
 }
 
+function normalizeCommonFormIds(value: string[] | null | undefined) {
+  return Array.from(
+    new Set(
+      (value ?? [])
+        .map((item) => trim(item))
+        .filter((item): item is string => Boolean(item)),
+    ),
+  );
+}
+
+function normalizeEmailComparableValue(value: string) {
+  return value.trim().toLocaleLowerCase("en-US");
+}
+
+function normalizePhoneComparableValue(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  const startsWithPlus = trimmed.startsWith("+");
+  const digits = trimmed.replace(/\D+/g, "");
+  if (!digits) return "";
+
+  return startsWithPlus ? `+${digits}` : digits;
+}
+
+function extractSubmissionIdentity(
+  submission: SubmissionDetail,
+  form: FormWithFields | null | undefined,
+) {
+  if (!form) return null;
+
+  const submissionFields = form.fields.filter((field) => field.scope === "submission");
+
+  for (const field of submissionFields) {
+    if (field.type !== "email") continue;
+
+    const value = submission.answers[field.key];
+    if (typeof value !== "string") continue;
+
+    const normalized = normalizeEmailComparableValue(value);
+    if (normalized) {
+      return {
+        key: `email:${normalized}`,
+        value: normalized,
+      };
+    }
+  }
+
+  for (const field of submissionFields) {
+    if (field.type !== "tel") continue;
+
+    const value = submission.answers[field.key];
+    if (typeof value !== "string") continue;
+
+    const normalized = normalizePhoneComparableValue(value);
+    if (normalized) {
+      return {
+        key: `phone:${normalized}`,
+        value: normalized,
+      };
+    }
+  }
+
+  return null;
+}
+
 async function getFormsByIdMap() {
   const { databaseId, formsCollectionId, fieldsCollectionId } = getRegistrationsConfig();
   const db = createDatabasesService();
@@ -1482,6 +1576,176 @@ async function getFormsByIdMap() {
   return map;
 }
 
+function filterSubmissionsBySearch(
+  submissions: SubmissionDetail[],
+  filters: Pick<SubmissionFilters, "searchField" | "searchQuery">,
+) {
+  const query = filters.searchQuery?.trim();
+  if (!query) return submissions;
+
+  const queryLower = query.toLowerCase();
+  const scope = filters.searchField?.trim();
+
+  return submissions.filter((sub) => {
+    if (!scope || scope === "all") {
+      const rawValues = [
+        sub.displayTitle,
+        sub.displaySubtitle,
+        sub.teamName,
+        sub.formTitle,
+        ...Object.values(sub.answers),
+        ...sub.memberAnswers.flatMap((member) => Object.values(member)),
+        ...(sub.commonMatches?.flatMap((match) => [match.formTitle, match.formSlug]) ?? []),
+      ];
+
+      return rawValues.some(
+        (value) =>
+          value !== null &&
+          value !== undefined &&
+          String(value).toLowerCase().includes(queryLower),
+      );
+    }
+
+    if (scope === "teamName") {
+      return sub.teamName?.toLowerCase().includes(queryLower);
+    }
+
+    const value = sub.answers[scope];
+    if (
+      value !== undefined &&
+      value !== null &&
+      String(value).toLowerCase().includes(queryLower)
+    ) {
+      return true;
+    }
+
+    return sub.memberAnswers.some(
+      (member) =>
+        member[scope] !== undefined &&
+        member[scope] !== null &&
+        String(member[scope]).toLowerCase().includes(queryLower),
+    );
+  });
+}
+
+function paginateSubmissions(
+  submissions: SubmissionDetail[],
+  page: number,
+  pageSize: number | "all",
+) {
+  if (pageSize === "all") return submissions;
+
+  const start = (page - 1) * pageSize;
+  return submissions.slice(start, start + pageSize);
+}
+
+async function listCommonRegistrationSubmissions(
+  filters: SubmissionFilters,
+  formsById: Map<string, FormWithFields>,
+  page: number,
+  pageSize: number | "all",
+): Promise<SubmissionPage> {
+  const { submissionsCollectionId } = getRegistrationsConfig();
+  const commonFormIds = normalizeCommonFormIds(filters.commonFormIds);
+
+  if (commonFormIds.length === 0) {
+    return {
+      submissions: [],
+      total: 0,
+      page,
+      pageSize,
+    };
+  }
+
+  const dateQueries: string[] = [];
+  const from = normalizeDateFilter(filters.from, false);
+  const to = normalizeDateFilter(filters.to, true);
+
+  if (from) dateQueries.push(Query.greaterThanEqual("$createdAt", from));
+  if (to) dateQueries.push(Query.lessThanEqual("$createdAt", to));
+
+  const identityMapsByFormId = new Map<
+    string,
+    Map<string, SubmissionDetail[]>
+  >();
+
+  await Promise.all(
+    commonFormIds.map(async (formId) => {
+      const form = formsById.get(formId);
+      if (!form) {
+        identityMapsByFormId.set(formId, new Map());
+        return;
+      }
+
+      const documents = await listAllDocumentsByQueries<SubmissionDoc>(
+        submissionsCollectionId,
+        [Query.equal("formId", formId), Query.orderDesc("$createdAt"), ...dateQueries],
+      );
+
+      const identityMap = new Map<string, SubmissionDetail[]>();
+
+      for (const submission of documents
+        .map((doc) => mapSubmissionDoc(doc, formsById))
+        .filter((item): item is SubmissionDetail => item !== null)) {
+        const identity = extractSubmissionIdentity(submission, form);
+        if (!identity) continue;
+
+        const existing = identityMap.get(identity.key);
+        if (existing) {
+          existing.push(submission);
+        } else {
+          identityMap.set(identity.key, [submission]);
+        }
+      }
+
+      identityMapsByFormId.set(formId, identityMap);
+    }),
+  );
+
+  const primaryIdentityMap = identityMapsByFormId.get(commonFormIds[0]) ?? new Map();
+  const commonKeys = Array.from(primaryIdentityMap.keys()).filter((identityKey) =>
+    commonFormIds.every((formId) => identityMapsByFormId.get(formId)?.has(identityKey)),
+  );
+
+  let submissions = commonKeys
+    .map<SubmissionDetail | null>((identityKey) => {
+      const matchedSubmissions = commonFormIds
+        .map((formId) => identityMapsByFormId.get(formId)?.get(identityKey)?.[0] ?? null)
+        .filter((item): item is SubmissionDetail => item !== null);
+
+      if (matchedSubmissions.length !== commonFormIds.length) {
+        return null;
+      }
+
+      const representative = [...matchedSubmissions].sort((left, right) =>
+        right.createdAt.localeCompare(left.createdAt),
+      )[0];
+
+      return {
+        ...representative,
+        commonMatches: matchedSubmissions.map((match) => ({
+          formId: match.formId,
+          formSlug: match.formSlug,
+          formTitle: match.formTitle,
+          submissionId: match.id,
+          createdAt: match.createdAt,
+        })),
+      };
+    })
+    .filter((item): item is SubmissionDetail => item !== null)
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+
+  submissions = filterSubmissionsBySearch(submissions, filters);
+  const total = submissions.length;
+
+  return {
+    submissions: paginateSubmissions(submissions, page, pageSize),
+    total,
+    page,
+    pageSize,
+  };
+}
+
 export async function listRegistrationSubmissions(
   filters: SubmissionFilters,
 ): Promise<SubmissionPage> {
@@ -1499,7 +1763,22 @@ export async function listRegistrationSubmissions(
     const { databaseId, submissionsCollectionId } = getRegistrationsConfig();
     const pageSize = normalizePageSize(filters.pageSize, PAGE_SIZE_DEFAULT);
     const page = normalizePositiveInteger(filters.page, 1);
+    const commonFormIds = normalizeCommonFormIds(filters.commonFormIds);
     const isSearchActive = Boolean(filters.searchQuery?.trim());
+
+    const formsById = await getFormsByIdMap();
+
+    if (commonFormIds.length > 0) {
+      return listCommonRegistrationSubmissions(
+        {
+          ...filters,
+          commonFormIds,
+        },
+        formsById,
+        page,
+        pageSize,
+      );
+    }
     
     // If search active or page size is all, we fetch a large batch to filter/paginate in memory
     const fetchLimit = (isSearchActive || pageSize === "all") ? 5000 : (pageSize as number);
@@ -1519,70 +1798,24 @@ export async function listRegistrationSubmissions(
       queries.push(Query.offset((page - 1) * (pageSize as number)));
     }
 
-    const [result, formsById] = await Promise.all([
-      createDatabasesService().listDocuments<SubmissionDoc>(
-        databaseId,
-        submissionsCollectionId,
-        queries,
-      ),
-      getFormsByIdMap(),
-    ]);
+    const result = await createDatabasesService().listDocuments<SubmissionDoc>(
+      databaseId,
+      submissionsCollectionId,
+      queries,
+    );
 
     let submissions = result.documents
       .map((doc) => mapSubmissionDoc(doc, formsById))
       .filter((s): s is SubmissionDetail => s !== null);
 
     if (isSearchActive) {
-      const queryLower = filters.searchQuery!.trim().toLowerCase();
-      const scope = filters.searchField?.trim();
-
-      submissions = submissions.filter((sub) => {
-        if (!scope || scope === "all") {
-          const rawValues = [
-            sub.displayTitle,
-            sub.displaySubtitle,
-            sub.teamName,
-            ...Object.values(sub.answers),
-            ...sub.memberAnswers.flatMap((m) => Object.values(m)),
-          ];
-          return rawValues.some(
-            (v) =>
-              v !== null &&
-              v !== undefined &&
-              String(v).toLowerCase().includes(queryLower)
-          );
-        } else {
-          if (scope === "teamName") {
-            return sub.teamName?.toLowerCase().includes(queryLower);
-          }
-          const val = sub.answers[scope];
-          if (
-            val !== undefined &&
-            val !== null &&
-            String(val).toLowerCase().includes(queryLower)
-          ) {
-            return true;
-          }
-          const memberMatch = sub.memberAnswers.some(
-            (m) =>
-              m[scope] !== undefined &&
-              m[scope] !== null &&
-              String(m[scope]).toLowerCase().includes(queryLower)
-          );
-          if (memberMatch) return true;
-          return false;
-        }
-      });
+      submissions = filterSubmissionsBySearch(submissions, filters);
     }
 
     const total = isSearchActive ? submissions.length : result.total;
 
     if (isSearchActive || pageSize === "all") {
-      if (pageSize !== "all") {
-        const size = pageSize as number;
-        const start = (page - 1) * size;
-        submissions = submissions.slice(start, start + size);
-      }
+      submissions = paginateSubmissions(submissions, page, pageSize);
     }
 
     return {

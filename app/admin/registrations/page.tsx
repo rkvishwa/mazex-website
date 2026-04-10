@@ -1,4 +1,5 @@
 import AdminRegistrationSubmissionsPanel from "@/components/admin/AdminRegistrationSubmissionsPanel";
+import { listCommonUserFieldOptions } from "@/lib/registration-common-fields";
 import {
   getRegistrationFormBySlug,
   getRegistrationSubmissionById,
@@ -50,15 +51,17 @@ export default async function AdminRegistrationsPage({
     );
   }
 
-  const fallbackForm = await getRegistrationFormBySlug(forms[0].slug);
+  const allFormsWithFields = (
+    await Promise.all(forms.map((form) => getRegistrationFormBySlug(form.slug)))
+  ).filter((form): form is NonNullable<typeof form> => form !== null);
 
-  if (!fallbackForm) {
+  if (allFormsWithFields.length === 0) {
     const fallbackForms = await listRegistrationForms();
 
     return (
       <AdminRegistrationSubmissionsPanel
         forms={fallbackForms}
-        contextForms={[]}
+        formsWithFields={[]}
         form={null}
         submissionPage={{
           submissions: [],
@@ -71,8 +74,10 @@ export default async function AdminRegistrationsPage({
     );
   }
 
+  const formsBySlug = new Map(allFormsWithFields.map((form) => [form.slug, form] as const));
+  const fallbackForm = allFormsWithFields[0];
   const slugParam = readQuery(params.form) ?? fallbackForm.slug;
-  const selectedForm = slugParam ? await getRegistrationFormBySlug(slugParam) : fallbackForm;
+  const selectedForm = formsBySlug.get(slugParam) ?? fallbackForm;
 
   const from = readQuery(params.from) ?? "";
   const to = readQuery(params.to) ?? "";
@@ -82,9 +87,10 @@ export default async function AdminRegistrationsPage({
   const pageSize = pageSizeParam === "all" ? "all" : Number(pageSizeParam ?? "15");
   const searchField = mode === "common" ? "" : readQuery(params.searchField) ?? "";
   const searchQuery = readQuery(params.searchQuery) ?? "";
-  const commonForms = (
-    await Promise.all(commonFormSlugs.map((slug) => getRegistrationFormBySlug(slug)))
-  ).filter((form): form is NonNullable<typeof form> => form !== null);
+  const commonFieldParam = readQuery(params.commonField) ?? "";
+  const commonForms = commonFormSlugs
+    .map((slug) => formsBySlug.get(slug) ?? null)
+    .filter((form): form is NonNullable<typeof form> => form !== null);
   const activeForm = mode === "common" ? commonForms[0] ?? selectedForm ?? fallbackForm : selectedForm ?? fallbackForm;
   const contextForms =
     mode === "common"
@@ -94,11 +100,19 @@ export default async function AdminRegistrationsPage({
       : activeForm
       ? [activeForm]
       : [];
+  const commonFieldOptions =
+    mode === "common" ? listCommonUserFieldOptions(contextForms) : [];
+  const commonFieldKey =
+    mode === "common" &&
+    commonFieldOptions.some((option) => option.value === commonFieldParam)
+      ? commonFieldParam
+      : commonFieldOptions[0]?.value ?? "";
 
   const [submissionPage] = await Promise.all([
     listRegistrationSubmissions({
       formId: mode === "common" ? undefined : activeForm.id,
       commonFormIds: mode === "common" ? commonForms.map((form) => form.id) : null,
+      commonFieldKey: mode === "common" ? commonFieldKey || null : null,
       from,
       to,
       page: Number.isInteger(page) && page > 0 ? page : 1,
@@ -125,7 +139,7 @@ export default async function AdminRegistrationsPage({
   return (
     <AdminRegistrationSubmissionsPanel
       forms={forms}
-      contextForms={contextForms}
+      formsWithFields={allFormsWithFields}
       form={activeForm}
       submissionPage={submissionPage}
       selectedSubmission={safeSelectedSubmission}
@@ -136,6 +150,7 @@ export default async function AdminRegistrationsPage({
       searchQuery={searchQuery}
       mode={mode}
       commonFormSlugs={commonForms.map((form) => form.slug)}
+      commonFieldKey={commonFieldKey}
     />
   );
 }

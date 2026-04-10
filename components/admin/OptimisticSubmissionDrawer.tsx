@@ -18,6 +18,7 @@ export function OptimisticSubmissionDrawer({
   mode,
   formSlug,
   commonFormSlugs,
+  commonFieldKey,
   submissions,
   selectedSubmission,
 }: {
@@ -25,6 +26,7 @@ export function OptimisticSubmissionDrawer({
   mode: "single" | "common";
   formSlug: string | null;
   commonFormSlugs: string[];
+  commonFieldKey: string;
   submissions: SubmissionDetail[];
   selectedSubmission: SubmissionDetail | null;
 }) {
@@ -42,6 +44,7 @@ export function OptimisticSubmissionDrawer({
     slug: mode === "common" ? null : formSlug,
     mode,
     commonFormSlugs,
+    commonFieldKey,
     from: searchParams.get("from"),
     to: searchParams.get("to"),
     page: Number(searchParams.get("page") ?? "1"),

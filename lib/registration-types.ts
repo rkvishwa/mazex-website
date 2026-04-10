@@ -212,6 +212,7 @@ export type RegistrationOverview = {
 export type SubmissionFilters = {
   formId?: string;
   commonFormIds?: string[] | null;
+  commonFieldKey?: string | null;
   from?: string | null;
   to?: string | null;
   page?: number;

@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, ListFilter } from "lucide-react";
 import FormattedPickerInput from "@/components/FormattedPickerInput";
+import {
+  listCommonUserFieldOptions,
+} from "@/lib/registration-common-fields";
 import { formatDateTimeDisplay, formatStoredDateForInput } from "@/lib/date-format";
 import type {
   FormDefinition,
@@ -24,6 +27,10 @@ function normalizeCommonFormSlugs(value: string[] | null | undefined) {
   return Array.from(
     new Set((value ?? []).map((item) => item.trim()).filter(Boolean)),
   );
+}
+
+function normalizeCommonFieldKey(value: string | null | undefined) {
+  return value?.trim() ?? "";
 }
 
 function formatValue(
@@ -60,6 +67,7 @@ export function buildPageHref({
   searchQuery,
   mode,
   commonFormSlugs,
+  commonFieldKey,
 }: {
   slug?: string | null;
   page?: number;
@@ -71,14 +79,19 @@ export function buildPageHref({
   searchQuery?: string | null;
   mode?: "single" | "common";
   commonFormSlugs?: string[] | null;
+  commonFieldKey?: string | null;
 }) {
   const params = new URLSearchParams();
   const normalizedCommonFormSlugs = normalizeCommonFormSlugs(commonFormSlugs);
+  const normalizedCommonFieldKey = normalizeCommonFieldKey(commonFieldKey);
 
   if (mode === "common") {
     params.set("mode", "common");
     if (normalizedCommonFormSlugs.length > 0) {
       params.set("commonForms", normalizedCommonFormSlugs.join(","));
+    }
+    if (normalizedCommonFieldKey) {
+      params.set("commonField", normalizedCommonFieldKey);
     }
   } else if (slug) {
     params.set("form", slug);
@@ -235,13 +248,17 @@ function SummaryItem({ label, value, vertical = false }: { label: string; value:
 function CommonFormFilterDropdown({
   forms,
   selectedSlugs,
+  selectedFieldKey,
   onToggleSlug,
+  onFieldKeyChange,
   onApply,
   disabled,
 }: {
-  forms: FormDefinition[];
+  forms: FormWithFields[];
   selectedSlugs: string[];
+  selectedFieldKey: string;
   onToggleSlug: (slug: string) => void;
+  onFieldKeyChange: (fieldKey: string) => void;
   onApply: () => void;
   disabled: boolean;
 }) {
@@ -251,6 +268,10 @@ function CommonFormFilterDropdown({
   const selectedForms = useMemo(
     () => forms.filter((candidate) => selectedSlugSet.has(candidate.slug)),
     [forms, selectedSlugSet],
+  );
+  const fieldOptions = useMemo(
+    () => listCommonUserFieldOptions(selectedForms),
+    [selectedForms],
   );
 
   useEffect(() => {
@@ -279,8 +300,8 @@ function CommonFormFilterDropdown({
       : `${selectedForms.length} forms selected`;
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <div className="relative w-full sm:min-w-[18rem]" ref={containerRef}>
+    <div className="flex min-w-0 flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+      <div className="relative w-full min-w-0 md:max-w-88 md:flex-1" ref={containerRef}>
         <button
           type="button"
           onClick={() => setOpen((current) => !current)}
@@ -333,11 +354,40 @@ function CommonFormFilterDropdown({
         ) : null}
       </div>
 
+      <div className="w-full min-w-0 md:min-w-52 md:flex-1">
+        <label htmlFor="common-field-select" className="sr-only">
+          Match by field
+        </label>
+        <select
+          id="common-field-select"
+          value={selectedFieldKey}
+          onChange={(event) => onFieldKeyChange(event.target.value)}
+          disabled={fieldOptions.length === 0}
+          aria-label="Match by field"
+          className="block h-[3.125rem] w-full cursor-pointer rounded-xl border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-900 shadow-sm transition-all focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
+        >
+          {fieldOptions.length === 0 ? (
+            <option value="">No shared fields</option>
+          ) : (
+            fieldOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))
+          )}
+        </select>
+        {fieldOptions.length === 0 ? (
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            Select forms that share the same comparable submission field.
+          </p>
+        ) : null}
+      </div>
+
       <button
         type="button"
         onClick={onApply}
         disabled={disabled}
-        className="inline-flex h-[3.125rem] items-center justify-center rounded-xl bg-zinc-900 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus:ring-zinc-300"
+        className="inline-flex h-[3.125rem] w-full items-center justify-center rounded-xl bg-zinc-900 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 md:w-auto md:self-end dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus:ring-zinc-300"
       >
         Filter
       </button>
@@ -409,7 +459,7 @@ function SubmissionRow({
 
 export default function AdminRegistrationSubmissionsPanel({
   forms,
-  contextForms,
+  formsWithFields,
   form,
   submissionPage,
   selectedSubmission,
@@ -420,9 +470,10 @@ export default function AdminRegistrationSubmissionsPanel({
   searchQuery,
   mode = "single",
   commonFormSlugs = [],
+  commonFieldKey = "",
 }: {
   forms: FormDefinition[];
-  contextForms: FormWithFields[];
+  formsWithFields: FormWithFields[];
   form: FormWithFields | null;
   submissionPage: SubmissionPage;
   selectedSubmission: SubmissionDetail | null;
@@ -433,6 +484,7 @@ export default function AdminRegistrationSubmissionsPanel({
   searchQuery?: string | null;
   mode?: "single" | "common";
   commonFormSlugs?: string[];
+  commonFieldKey?: string;
 }) {
   const router = useRouter();
   const isCommonMode = mode === "common";
@@ -440,14 +492,24 @@ export default function AdminRegistrationSubmissionsPanel({
     () => normalizeCommonFormSlugs(commonFormSlugs),
     [commonFormSlugs],
   );
+  const normalizedCommonFieldKey = useMemo(
+    () => normalizeCommonFieldKey(commonFieldKey),
+    [commonFieldKey],
+  );
   const selectedCommonSlugSet = useMemo(
     () => new Set(normalizedCommonFormSlugs),
     [normalizedCommonFormSlugs],
   );
   const selectedCommonForms = useMemo(
-    () => forms.filter((candidate) => selectedCommonSlugSet.has(candidate.slug)),
-    [forms, selectedCommonSlugSet],
+    () => formsWithFields.filter((candidate) => selectedCommonSlugSet.has(candidate.slug)),
+    [formsWithFields, selectedCommonSlugSet],
   );
+  const selectedCommonFieldOptions = useMemo(
+    () => listCommonUserFieldOptions(selectedCommonForms),
+    [selectedCommonForms],
+  );
+  const selectedCommonField =
+    selectedCommonFieldOptions.find((option) => option.value === normalizedCommonFieldKey) ?? null;
   const [showCommonFormFilter, setShowCommonFormFilter] = useState(isCommonMode);
   const [pendingCommonFormSlugs, setPendingCommonFormSlugs] = useState<string[]>(
     normalizedCommonFormSlugs.length > 0
@@ -455,6 +517,17 @@ export default function AdminRegistrationSubmissionsPanel({
       : form?.slug
       ? [form.slug]
       : [],
+  );
+  const [pendingCommonFieldKey, setPendingCommonFieldKey] = useState<string>(
+    normalizedCommonFieldKey,
+  );
+  const pendingSelectedForms = useMemo(() => {
+    const pendingSlugSet = new Set(pendingCommonFormSlugs);
+    return formsWithFields.filter((candidate) => pendingSlugSet.has(candidate.slug));
+  }, [formsWithFields, pendingCommonFormSlugs]);
+  const pendingCommonFieldOptions = useMemo(
+    () => listCommonUserFieldOptions(pendingSelectedForms),
+    [pendingSelectedForms],
   );
 
   useEffect(() => {
@@ -471,19 +544,48 @@ export default function AdminRegistrationSubmissionsPanel({
     );
   }, [form?.slug, normalizedCommonFormSlugs]);
 
+  useEffect(() => {
+    setPendingCommonFieldKey(normalizedCommonFieldKey);
+  }, [normalizedCommonFieldKey]);
+
+  useEffect(() => {
+    if (pendingCommonFieldOptions.length === 0) {
+      if (pendingCommonFieldKey) {
+        setPendingCommonFieldKey("");
+      }
+      return;
+    }
+
+    if (
+      !pendingCommonFieldOptions.some(
+        (option) => option.value === pendingCommonFieldKey,
+      )
+    ) {
+      setPendingCommonFieldKey(pendingCommonFieldOptions[0].value);
+    }
+  }, [pendingCommonFieldKey, pendingCommonFieldOptions]);
+
   const currentModeRouteConfig = useMemo<{
     slug: string | null;
     mode: "single" | "common";
     commonFormSlugs: string[] | null;
+    commonFieldKey: string | null;
     searchField: string | null | undefined;
   }>(
     () => ({
       slug: isCommonMode ? null : form?.slug ?? null,
       mode: isCommonMode ? "common" : "single",
       commonFormSlugs: isCommonMode ? normalizedCommonFormSlugs : null,
+      commonFieldKey: isCommonMode ? normalizedCommonFieldKey : null,
       searchField: isCommonMode ? null : searchField,
     }),
-    [form?.slug, isCommonMode, normalizedCommonFormSlugs, searchField],
+    [
+      form?.slug,
+      isCommonMode,
+      normalizedCommonFieldKey,
+      normalizedCommonFormSlugs,
+      searchField,
+    ],
   );
 
   const buildCurrentModeHref = ({
@@ -600,10 +702,11 @@ export default function AdminRegistrationSubmissionsPanel({
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 pb-10">
       <OptimisticSubmissionDrawer
-        forms={contextForms}
+        forms={formsWithFields}
         mode={mode}
         formSlug={form?.slug ?? null}
         commonFormSlugs={normalizedCommonFormSlugs}
+        commonFieldKey={normalizedCommonFieldKey}
         submissions={submissionPage.submissions}
         selectedSubmission={selectedSubmission}
       />
@@ -613,8 +716,9 @@ export default function AdminRegistrationSubmissionsPanel({
         afterSelector={
           showCommonFormFilter ? (
             <CommonFormFilterDropdown
-              forms={forms}
+              forms={formsWithFields}
               selectedSlugs={pendingCommonFormSlugs}
+              selectedFieldKey={pendingCommonFieldKey}
               onToggleSlug={(slug) => {
                 setPendingCommonFormSlugs((current) =>
                   current.includes(slug)
@@ -622,11 +726,13 @@ export default function AdminRegistrationSubmissionsPanel({
                     : [...current, slug],
                 );
               }}
+              onFieldKeyChange={setPendingCommonFieldKey}
               onApply={() => {
                 const nextCommonFormSlugs = normalizeCommonFormSlugs(pendingCommonFormSlugs);
                 const href = buildPageHref({
                   mode: "common",
                   commonFormSlugs: nextCommonFormSlugs,
+                  commonFieldKey: pendingCommonFieldKey,
                   page: 1,
                   from,
                   to,
@@ -636,7 +742,9 @@ export default function AdminRegistrationSubmissionsPanel({
                 });
                 router.push(href, { scroll: false });
               }}
-              disabled={pendingCommonFormSlugs.length === 0}
+              disabled={
+                pendingCommonFormSlugs.length === 0 || !normalizeCommonFieldKey(pendingCommonFieldKey)
+              }
             />
           ) : null
         }
@@ -661,6 +769,11 @@ export default function AdminRegistrationSubmissionsPanel({
                     {selectedForm.title}
                   </span>
                 ))}
+                {selectedCommonField ? (
+                  <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[0.6875rem] font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+                    Match by {selectedCommonField.label}
+                  </span>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -695,6 +808,7 @@ export default function AdminRegistrationSubmissionsPanel({
               slug: isCommonMode ? null : form?.slug,
               mode: isCommonMode ? "common" : "single",
               commonFormSlugs: isCommonMode ? normalizedCommonFormSlugs : null,
+              commonFieldKey: isCommonMode ? normalizedCommonFieldKey : null,
               page: 1,
               from: f || null,
               to: t || null,

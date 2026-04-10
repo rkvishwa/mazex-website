@@ -50,10 +50,10 @@ export default function FormSelectorDropdown({
 
   return (
     <div
-      className="relative mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+      className="relative mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
     >
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="relative w-full sm:w-auto sm:min-w-[17.5rem]" ref={containerRef}>
+      <div className="flex min-w-0 flex-col gap-4 md:flex-row md:flex-wrap md:items-start lg:items-center">
+        <div className="relative w-full min-w-0 md:w-auto md:min-w-70" ref={containerRef}>
           <button
             type="button"
             onClick={() => setOpen(!open)}

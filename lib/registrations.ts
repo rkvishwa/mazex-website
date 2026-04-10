@@ -17,6 +17,10 @@ import {
   createAppwriteAdminClient,
   isAppwriteConfigured,
 } from "@/lib/appwrite";
+import {
+  findCommonUserFieldInForm,
+  normalizeCommonUserFieldValue,
+} from "@/lib/registration-common-fields";
 import type {
   FieldDefinition,
   FieldOption,
@@ -1492,54 +1496,41 @@ function normalizeCommonFormIds(value: string[] | null | undefined) {
   );
 }
 
-function normalizeEmailComparableValue(value: string) {
-  return value.trim().toLocaleLowerCase("en-US");
-}
-
-function normalizePhoneComparableValue(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-
-  const startsWithPlus = trimmed.startsWith("+");
-  const digits = trimmed.replace(/\D+/g, "");
-  if (!digits) return "";
-
-  return startsWithPlus ? `+${digits}` : digits;
-}
-
 function extractSubmissionIdentity(
   submission: SubmissionDetail,
   form: FormWithFields | null | undefined,
+  commonFieldKey?: string | null,
 ) {
   if (!form) return null;
 
-  const submissionFields = form.fields.filter((field) => field.scope === "submission");
+  const normalizedCommonFieldKey = trim(commonFieldKey);
+  if (normalizedCommonFieldKey) {
+    const explicitField = findCommonUserFieldInForm(form, normalizedCommonFieldKey);
+    if (!explicitField) return null;
 
-  for (const field of submissionFields) {
-    if (field.type !== "email") continue;
+    const normalized = normalizeCommonUserFieldValue(
+      explicitField,
+      submission.answers[explicitField.key],
+    );
+    if (!normalized) return null;
 
-    const value = submission.answers[field.key];
-    if (typeof value !== "string") continue;
-
-    const normalized = normalizeEmailComparableValue(value);
-    if (normalized) {
-      return {
-        key: `email:${normalized}`,
-        value: normalized,
-      };
-    }
+    return {
+      key: `field:${normalizedCommonFieldKey}:${normalized}`,
+      value: normalized,
+    };
   }
 
-  for (const field of submissionFields) {
-    if (field.type !== "tel") continue;
+  for (const fallbackKey of ["email", "phone"]) {
+    const fallbackField = findCommonUserFieldInForm(form, fallbackKey);
+    if (!fallbackField) continue;
 
-    const value = submission.answers[field.key];
-    if (typeof value !== "string") continue;
-
-    const normalized = normalizePhoneComparableValue(value);
+    const normalized = normalizeCommonUserFieldValue(
+      fallbackField,
+      submission.answers[fallbackField.key],
+    );
     if (normalized) {
       return {
-        key: `phone:${normalized}`,
+        key: `field:${fallbackKey}:${normalized}`,
         value: normalized,
       };
     }
@@ -1647,6 +1638,7 @@ async function listCommonRegistrationSubmissions(
 ): Promise<SubmissionPage> {
   const { submissionsCollectionId } = getRegistrationsConfig();
   const commonFormIds = normalizeCommonFormIds(filters.commonFormIds);
+  const commonFieldKey = trim(filters.commonFieldKey);
 
   if (commonFormIds.length === 0) {
     return {
@@ -1687,7 +1679,7 @@ async function listCommonRegistrationSubmissions(
       for (const submission of documents
         .map((doc) => mapSubmissionDoc(doc, formsById))
         .filter((item): item is SubmissionDetail => item !== null)) {
-        const identity = extractSubmissionIdentity(submission, form);
+        const identity = extractSubmissionIdentity(submission, form, commonFieldKey);
         if (!identity) continue;
 
         const existing = identityMap.get(identity.key);

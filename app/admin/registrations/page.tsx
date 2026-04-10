@@ -13,6 +13,19 @@ function readQuery(val: SearchParamsValue) {
   return Array.isArray(val) ? val[0] : val;
 }
 
+function readQueryList(val: SearchParamsValue) {
+  const values = Array.isArray(val) ? val : typeof val === "string" ? [val] : [];
+
+  return Array.from(
+    new Set(
+      values
+        .flatMap((item) => item.split(","))
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
 export default async function AdminRegistrationsPage({
   searchParams,
 }: {
@@ -20,46 +33,46 @@ export default async function AdminRegistrationsPage({
 }) {
   const params = await searchParams;
   const formCards = await listRegistrationFormCards();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const forms = formCards.map(({ availability, ...form }) => form);
+  const forms = formCards;
+  const mode = readQuery(params.mode) === "common" ? "common" : "single";
+  const commonFormSlugs = readQueryList(params.commonForms);
 
-  const slugParam = readQuery(params.form) ?? forms[0]?.slug ?? "";
-  const selectedForm = slugParam ? await getRegistrationFormBySlug(slugParam) : null;
+  if (forms.length === 0) {
+    return (
+      <div className="mx-auto mt-8 max-w-xl rounded-xl border border-dashed border-zinc-300 bg-white p-12 text-center dark:border-zinc-700 dark:bg-zinc-900">
+        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+          No registration forms yet.
+        </p>
+        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+          Go to Form Builder to create your first form.
+        </p>
+      </div>
+    );
+  }
 
-  if (!selectedForm) {
+  const fallbackForm = await getRegistrationFormBySlug(forms[0].slug);
+
+  if (!fallbackForm) {
     const fallbackForms = await listRegistrationForms();
-    const fallbackForm = fallbackForms[0]
-      ? await getRegistrationFormBySlug(fallbackForms[0].slug)
-      : null;
-
-    if (!fallbackForm) {
-      return (
-        <div className="mx-auto mt-8 max-w-xl rounded-xl border border-dashed border-zinc-300 bg-white p-12 text-center dark:border-zinc-700 dark:bg-zinc-900">
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-            No registration forms yet.
-          </p>
-          <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-            Go to Form Builder to create your first form.
-          </p>
-        </div>
-      );
-    }
-
-    const submissionPage = await listRegistrationSubmissions({
-      formId: fallbackForm.id,
-      page: 1,
-      pageSize: 15,
-    });
 
     return (
       <AdminRegistrationSubmissionsPanel
         forms={fallbackForms}
-        form={fallbackForm}
-        submissionPage={submissionPage}
+        contextForms={[]}
+        form={null}
+        submissionPage={{
+          submissions: [],
+          total: 0,
+          page: 1,
+          pageSize: 15,
+        }}
         selectedSubmission={null}
       />
     );
   }
+
+  const slugParam = readQuery(params.form) ?? fallbackForm.slug;
+  const selectedForm = slugParam ? await getRegistrationFormBySlug(slugParam) : fallbackForm;
 
   const from = readQuery(params.from) ?? "";
   const to = readQuery(params.to) ?? "";
@@ -67,12 +80,25 @@ export default async function AdminRegistrationsPage({
   const submissionId = readQuery(params.submission) ?? "";
   const pageSizeParam = readQuery(params.pageSize);
   const pageSize = pageSizeParam === "all" ? "all" : Number(pageSizeParam ?? "15");
-  const searchField = readQuery(params.searchField) ?? "";
+  const searchField = mode === "common" ? "" : readQuery(params.searchField) ?? "";
   const searchQuery = readQuery(params.searchQuery) ?? "";
+  const commonForms = (
+    await Promise.all(commonFormSlugs.map((slug) => getRegistrationFormBySlug(slug)))
+  ).filter((form): form is NonNullable<typeof form> => form !== null);
+  const activeForm = mode === "common" ? commonForms[0] ?? selectedForm ?? fallbackForm : selectedForm ?? fallbackForm;
+  const contextForms =
+    mode === "common"
+      ? commonForms.length > 0
+        ? commonForms
+        : [activeForm]
+      : activeForm
+      ? [activeForm]
+      : [];
 
   const [submissionPage] = await Promise.all([
     listRegistrationSubmissions({
-      formId: selectedForm.id,
+      formId: mode === "common" ? undefined : activeForm.id,
+      commonFormIds: mode === "common" ? commonForms.map((form) => form.id) : null,
       from,
       to,
       page: Number.isInteger(page) && page > 0 ? page : 1,
@@ -90,19 +116,26 @@ export default async function AdminRegistrationsPage({
     selectedSubmission = await getRegistrationSubmissionById(submissionId);
   }
 
+  const allowedFormIds = new Set(contextForms.map((form) => form.id));
+  const safeSelectedSubmission =
+    selectedSubmission && allowedFormIds.has(selectedSubmission.formId)
+      ? selectedSubmission
+      : null;
+
   return (
     <AdminRegistrationSubmissionsPanel
-        forms={forms}
-        form={selectedForm}
-        submissionPage={submissionPage}
-        selectedSubmission={
-          selectedSubmission?.formId === selectedForm.id ? selectedSubmission : null
-        }
-        from={from}
-        to={to}
-        pageSize={pageSize}
-        searchField={searchField}
-        searchQuery={searchQuery}
-      />
+      forms={forms}
+      contextForms={contextForms}
+      form={activeForm}
+      submissionPage={submissionPage}
+      selectedSubmission={safeSelectedSubmission}
+      from={from}
+      to={to}
+      pageSize={pageSize}
+      searchField={searchField}
+      searchQuery={searchQuery}
+      mode={mode}
+      commonFormSlugs={commonForms.map((form) => form.slug)}
+    />
   );
 }

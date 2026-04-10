@@ -30,6 +30,8 @@ const GOOGLE_SHEETS_FORM_SYNCS_COL =
   env.APPWRITE_COLLECTION_GOOGLE_SHEETS_FORM_SYNCS || "google_sheets_form_syncs";
 const GOOGLE_SHEETS_CONNECTIONS_COL =
   env.APPWRITE_COLLECTION_GOOGLE_SHEETS_CONNECTIONS || "google_sheets_connections";
+const SHORT_LINKS_COL =
+  env.APPWRITE_COLLECTION_SHORT_LINKS || "short_links";
 const BUCKET_ID  = env.APPWRITE_BUCKET_FORM_BANNERS             || "form_banners";
 const FILES_BUCKET_ID = env.APPWRITE_BUCKET_REGISTRATION_FILES  || "registration_files";
 const REGISTRATION_FILE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "pdf", "doc", "docx"];
@@ -243,11 +245,28 @@ await waitAvailable(
   googleSheetsConnectionAttrs.map((attr) => attr.key),
 );
 
-// 8. form_banners bucket
+// 8. short_links
+console.log("\n📋  short_links");
+await ensureCollection(SHORT_LINKS_COL, "Short Links");
+const shortLinkAttrs = [
+  { t:"str", key:"shortCode", size:64, req:true },
+  { t:"str", key:"destinationUrl", size:4096, req:true },
+  { t:"str", key:"expiresAt", size:64 },
+  { t:"bool", key:"isActive", def:true },
+  { t:"int", key:"visitCount", min:0, max:2147483647, def:0 },
+  { t:"str", key:"lastVisitedAt", size:64 },
+  { t:"str", key:"createdByAdminUserId", size:255, req:true },
+];
+await createAttrs(SHORT_LINKS_COL, shortLinkAttrs);
+await waitAvailable(SHORT_LINKS_COL, shortLinkAttrs.map((attr) => attr.key));
+await ensureIndex(SHORT_LINKS_COL, "short_code_unique", "unique", ["shortCode"]);
+await ensureIndex(SHORT_LINKS_COL, "by_creator", "key", ["createdByAdminUserId"]);
+
+// 9. form_banners bucket
 console.log("\n🗂️   form_banners bucket");
 await ensureBucket(BUCKET_ID, "Form Banners");
 
-// 9. registration_files bucket
+// 10. registration_files bucket
 console.log("\n🗂️   registration_files bucket");
 try {
   await storage.getBucket(FILES_BUCKET_ID);

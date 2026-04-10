@@ -10,6 +10,7 @@ import {
   ClipboardList,
   Handshake,
   LayoutTemplate,
+  Link2,
   LogOut,
   Mail,
   Menu,
@@ -51,6 +52,7 @@ const navigationGroups = [
     label: "System",
     items: [
       { href: "/admin/form-builder", label: "Form Builder", icon: LayoutTemplate },
+      { href: "/admin/link-shortener", label: "Link Shortener", icon: Link2 },
       { href: "/admin/settings", label: "Settings", icon: Settings },
     ],
   },

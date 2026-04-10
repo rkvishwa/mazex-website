@@ -133,11 +133,20 @@ export type SubmissionSummary = {
   displayTitle: string;
   displaySubtitle: string | null;
   teamName: string | null;
+  commonMatches?: SubmissionCommonMatch[];
 };
 
 export type SubmissionDetail = SubmissionSummary & {
   answers: SubmissionAnswers;
   memberAnswers: SubmissionAnswers[];
+};
+
+export type SubmissionCommonMatch = {
+  formId: string;
+  formSlug: string | null;
+  formTitle: string | null;
+  submissionId: string;
+  createdAt: string;
 };
 
 export type RegistrationOverviewItem = {
@@ -202,6 +211,7 @@ export type RegistrationOverview = {
 
 export type SubmissionFilters = {
   formId?: string;
+  commonFormIds?: string[] | null;
   from?: string | null;
   to?: string | null;
   page?: number;

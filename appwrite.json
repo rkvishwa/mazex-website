@@ -895,6 +895,99 @@
                 }
             ],
             "indexes": []
+        },
+        {
+            "$id": "short_links",
+            "$permissions": [],
+            "databaseId": "mazex_data",
+            "name": "Short Links",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [
+                {
+                    "key": "shortCode",
+                    "type": "string",
+                    "required": true,
+                    "array": false,
+                    "size": 64,
+                    "encrypt": false,
+                    "default": null
+                },
+                {
+                    "key": "destinationUrl",
+                    "type": "string",
+                    "required": true,
+                    "array": false,
+                    "size": 4096,
+                    "encrypt": false,
+                    "default": null
+                },
+                {
+                    "key": "expiresAt",
+                    "type": "string",
+                    "required": false,
+                    "array": false,
+                    "size": 64,
+                    "encrypt": false,
+                    "default": null
+                },
+                {
+                    "key": "isActive",
+                    "type": "boolean",
+                    "required": false,
+                    "array": false,
+                    "default": true
+                },
+                {
+                    "key": "visitCount",
+                    "type": "integer",
+                    "required": false,
+                    "array": false,
+                    "min": 0,
+                    "max": 2147483647,
+                    "default": 0
+                },
+                {
+                    "key": "lastVisitedAt",
+                    "type": "string",
+                    "required": false,
+                    "array": false,
+                    "size": 64,
+                    "encrypt": false,
+                    "default": null
+                },
+                {
+                    "key": "createdByAdminUserId",
+                    "type": "string",
+                    "required": true,
+                    "array": false,
+                    "size": 255,
+                    "encrypt": false,
+                    "default": null
+                }
+            ],
+            "indexes": [
+                {
+                    "key": "short_code_unique",
+                    "type": "unique",
+                    "attributes": [
+                        "shortCode"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                },
+                {
+                    "key": "by_creator",
+                    "type": "key",
+                    "attributes": [
+                        "createdByAdminUserId"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                }
+            ]
         }
     ],
     "buckets": [

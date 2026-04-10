@@ -32,6 +32,7 @@ const cols = [
   env.APPWRITE_COLLECTION_REGISTRATION_CONTACTS || "registration_contacts",
   env.APPWRITE_COLLECTION_GOOGLE_SHEETS_FORM_SYNCS || "google_sheets_form_syncs",
   env.APPWRITE_COLLECTION_GOOGLE_SHEETS_CONNECTIONS || "google_sheets_connections",
+  env.APPWRITE_COLLECTION_SHORT_LINKS || "short_links",
 ];
 
 for (const colId of cols) {

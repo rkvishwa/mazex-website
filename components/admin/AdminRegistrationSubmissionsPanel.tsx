@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, ListFilter } from "lucide-react";
 import FormattedPickerInput from "@/components/FormattedPickerInput";
 import { formatDateTimeDisplay, formatStoredDateForInput } from "@/lib/date-format";
 import type {
@@ -16,6 +17,14 @@ import FormSelectorDropdown from "@/components/admin/FormSelectorDropdown";
 import { OptimisticSubmissionDrawer } from "@/components/admin/OptimisticSubmissionDrawer";
 import SubmissionRowInteractive from "@/components/admin/SubmissionRowInteractive";
 import { useRouter } from "next/navigation";
+
+const FORM_FILTER_ITEM_ID = "__form_filter__";
+
+function normalizeCommonFormSlugs(value: string[] | null | undefined) {
+  return Array.from(
+    new Set((value ?? []).map((item) => item.trim()).filter(Boolean)),
+  );
+}
 
 function formatValue(
   value: unknown,
@@ -49,8 +58,10 @@ export function buildPageHref({
   pageSize,
   searchField,
   searchQuery,
+  mode,
+  commonFormSlugs,
 }: {
-  slug: string;
+  slug?: string | null;
   page?: number;
   from?: string | null;
   to?: string | null;
@@ -58,10 +69,20 @@ export function buildPageHref({
   pageSize?: number | "all" | null;
   searchField?: string | null;
   searchQuery?: string | null;
+  mode?: "single" | "common";
+  commonFormSlugs?: string[] | null;
 }) {
   const params = new URLSearchParams();
+  const normalizedCommonFormSlugs = normalizeCommonFormSlugs(commonFormSlugs);
 
-  params.set("form", slug);
+  if (mode === "common") {
+    params.set("mode", "common");
+    if (normalizedCommonFormSlugs.length > 0) {
+      params.set("commonForms", normalizedCommonFormSlugs.join(","));
+    }
+  } else if (slug) {
+    params.set("form", slug);
+  }
 
   if (page && page > 1) {
     params.set("page", String(page));
@@ -74,7 +95,8 @@ export function buildPageHref({
   if (searchField) params.set("searchField", searchField);
   if (searchQuery) params.set("searchQuery", searchQuery);
 
-  return `/admin/registrations?${params.toString()}`;
+  const query = params.toString();
+  return query ? `/admin/registrations?${query}` : "/admin/registrations";
 }
 
 export function SubmissionDetailPanel({
@@ -82,12 +104,12 @@ export function SubmissionDetailPanel({
   submission,
   onCloseHref,
 }: {
-  form: FormWithFields;
+  form: FormWithFields | null;
   submission: SubmissionDetail;
   onCloseHref: string;
 }) {
-  const labelMap = new Map(form.fields.map((f) => [f.key, f.label] as const));
-  const typeMap = new Map(form.fields.map((f) => [f.key, f.type] as const));
+  const labelMap = new Map(form?.fields.map((f) => [f.key, f.label] as const) ?? []);
+  const typeMap = new Map(form?.fields.map((f) => [f.key, f.type] as const) ?? []);
 
   return (
     <div className="w-full bg-white dark:bg-zinc-900">
@@ -119,8 +141,26 @@ export function SubmissionDetailPanel({
         <div className="grid gap-4 md:grid-cols-2">
           {submission.displaySubtitle && <SummaryItem label="Contact" value={submission.displaySubtitle} />}
           {submission.teamName && <SummaryItem label="Team name" value={submission.teamName} />}
-          <SummaryItem label="Form" value={submission.formTitle ?? form.title} />
+          <SummaryItem label="Form" value={submission.formTitle ?? form?.title ?? "Unknown form"} />
         </div>
+
+        {submission.commonMatches && submission.commonMatches.length > 0 ? (
+          <div className="mt-6 rounded-lg border border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-800 dark:bg-zinc-950">
+            <h4 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+              Common across forms
+            </h4>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {submission.commonMatches.map((match) => (
+                <SummaryItem
+                  key={`${submission.id}-${match.formId}-${match.submissionId}`}
+                  label={match.formTitle ?? "Form"}
+                  value={`Submitted ${formatTimestamp(match.createdAt)}`}
+                  vertical
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-6 rounded-lg border border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-800 dark:bg-zinc-950">
         <h4 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
@@ -192,29 +232,135 @@ function SummaryItem({ label, value, vertical = false }: { label: string; value:
   );
 }
 
+function CommonFormFilterDropdown({
+  forms,
+  selectedSlugs,
+  onToggleSlug,
+  onApply,
+  disabled,
+}: {
+  forms: FormDefinition[];
+  selectedSlugs: string[];
+  onToggleSlug: (slug: string) => void;
+  onApply: () => void;
+  disabled: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const selectedSlugSet = useMemo(() => new Set(selectedSlugs), [selectedSlugs]);
+  const selectedForms = useMemo(
+    () => forms.filter((candidate) => selectedSlugSet.has(candidate.slug)),
+    [forms, selectedSlugSet],
+  );
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside, { capture: true });
+      document.addEventListener("touchstart", handleClickOutside, { capture: true });
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside, { capture: true });
+      document.removeEventListener("touchstart", handleClickOutside, { capture: true });
+    };
+  }, [open]);
+
+  const buttonLabel =
+    selectedForms.length === 0
+      ? "Select forms"
+      : selectedForms.length === 1
+      ? selectedForms[0].title
+      : `${selectedForms.length} forms selected`;
+
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="relative w-full sm:min-w-[18rem]" ref={containerRef}>
+        <button
+          type="button"
+          onClick={() => setOpen((current) => !current)}
+          className="flex h-[3.125rem] w-full items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-900 shadow-sm transition-all hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:border-zinc-700"
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <ListFilter className="h-4 w-4 shrink-0 text-zinc-400" />
+            <span className="truncate">{buttonLabel}</span>
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 text-zinc-400 transition-transform duration-200 ${
+              open ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        {open ? (
+          <div className="absolute left-0 top-full z-30 mt-2 w-full overflow-hidden rounded-xl border border-zinc-200 bg-white py-1.5 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-200 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="max-h-[18.75rem] overflow-y-auto px-1.5">
+              {forms.map((candidate) => {
+                const isChecked = selectedSlugSet.has(candidate.slug);
+
+                return (
+                  <button
+                    key={candidate.id}
+                    type="button"
+                    onClick={() => onToggleSlug(candidate.slug)}
+                    className="flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-zinc-700 transition-all hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+                  >
+                    <span
+                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                        isChecked
+                          ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                          : "border-zinc-300 text-transparent dark:border-zinc-700"
+                      }`}
+                    >
+                      <Check className="h-3 w-3" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">{candidate.title}</span>
+                      <span className="block text-[0.625rem] font-bold uppercase tracking-wider text-zinc-400">
+                        {candidate.kind}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <button
+        type="button"
+        onClick={onApply}
+        disabled={disabled}
+        className="inline-flex h-[3.125rem] items-center justify-center rounded-xl bg-zinc-900 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus:ring-zinc-300"
+      >
+        Filter
+      </button>
+    </div>
+  );
+}
+
 function SubmissionRow({
-  form,
   submission,
-  from,
-  to,
+  href,
   isActive,
   sequenceNumber,
+  showCommonMatches = false,
 }: {
-  form: FormWithFields;
   submission: SubmissionSummary;
-  from?: string | null;
-  to?: string | null;
+  href: string;
   isActive?: boolean;
   sequenceNumber: number;
+  showCommonMatches?: boolean;
 }) {
   return (
       <SubmissionRowInteractive
-        href={buildPageHref({
-          slug: form.slug,
-          from,
-          to,
-          submissionId: submission.id,
-        })}
+        href={href}
         isActive={!!isActive}
         submissionId={submission.id}
       >
@@ -244,12 +390,26 @@ function SubmissionRow({
           <SummaryItem label="Team" value={submission.teamName} />
         </div>
       )}
+
+      {showCommonMatches && submission.commonMatches && submission.commonMatches.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {submission.commonMatches.map((match) => (
+            <span
+              key={`${submission.id}-${match.formId}-${match.submissionId}`}
+              className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[0.6875rem] font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+            >
+              {match.formTitle ?? "Form"}
+            </span>
+          ))}
+        </div>
+      ) : null}
     </SubmissionRowInteractive>
   );
 }
 
 export default function AdminRegistrationSubmissionsPanel({
   forms,
+  contextForms,
   form,
   submissionPage,
   selectedSubmission,
@@ -258,9 +418,12 @@ export default function AdminRegistrationSubmissionsPanel({
   pageSize,
   searchField,
   searchQuery,
+  mode = "single",
+  commonFormSlugs = [],
 }: {
   forms: FormDefinition[];
-  form: FormWithFields;
+  contextForms: FormWithFields[];
+  form: FormWithFields | null;
   submissionPage: SubmissionPage;
   selectedSubmission: SubmissionDetail | null;
   from?: string | null;
@@ -268,8 +431,88 @@ export default function AdminRegistrationSubmissionsPanel({
   pageSize?: number | "all" | null;
   searchField?: string | null;
   searchQuery?: string | null;
+  mode?: "single" | "common";
+  commonFormSlugs?: string[];
 }) {
   const router = useRouter();
+  const isCommonMode = mode === "common";
+  const normalizedCommonFormSlugs = useMemo(
+    () => normalizeCommonFormSlugs(commonFormSlugs),
+    [commonFormSlugs],
+  );
+  const selectedCommonSlugSet = useMemo(
+    () => new Set(normalizedCommonFormSlugs),
+    [normalizedCommonFormSlugs],
+  );
+  const selectedCommonForms = useMemo(
+    () => forms.filter((candidate) => selectedCommonSlugSet.has(candidate.slug)),
+    [forms, selectedCommonSlugSet],
+  );
+  const [showCommonFormFilter, setShowCommonFormFilter] = useState(isCommonMode);
+  const [pendingCommonFormSlugs, setPendingCommonFormSlugs] = useState<string[]>(
+    normalizedCommonFormSlugs.length > 0
+      ? normalizedCommonFormSlugs
+      : form?.slug
+      ? [form.slug]
+      : [],
+  );
+
+  useEffect(() => {
+    setShowCommonFormFilter(isCommonMode);
+  }, [isCommonMode]);
+
+  useEffect(() => {
+    setPendingCommonFormSlugs(
+      normalizedCommonFormSlugs.length > 0
+        ? normalizedCommonFormSlugs
+        : form?.slug
+        ? [form.slug]
+        : [],
+    );
+  }, [form?.slug, normalizedCommonFormSlugs]);
+
+  const currentModeRouteConfig = useMemo<{
+    slug: string | null;
+    mode: "single" | "common";
+    commonFormSlugs: string[] | null;
+    searchField: string | null | undefined;
+  }>(
+    () => ({
+      slug: isCommonMode ? null : form?.slug ?? null,
+      mode: isCommonMode ? "common" : "single",
+      commonFormSlugs: isCommonMode ? normalizedCommonFormSlugs : null,
+      searchField: isCommonMode ? null : searchField,
+    }),
+    [form?.slug, isCommonMode, normalizedCommonFormSlugs, searchField],
+  );
+
+  const buildCurrentModeHref = ({
+    page,
+    submissionId,
+    nextFrom = from,
+    nextTo = to,
+    nextPageSize = pageSize,
+    nextSearchField = searchField,
+    nextSearchQuery = searchQuery,
+  }: {
+    page?: number;
+    submissionId?: string | null;
+    nextFrom?: string | null;
+    nextTo?: string | null;
+    nextPageSize?: number | "all" | null;
+    nextSearchField?: string | null;
+    nextSearchQuery?: string | null;
+  }) =>
+    buildPageHref({
+      ...currentModeRouteConfig,
+      page,
+      from: nextFrom,
+      to: nextTo,
+      submissionId,
+      pageSize: nextPageSize,
+      searchField: isCommonMode ? null : nextSearchField,
+      searchQuery: nextSearchQuery,
+    });
 
   // Load preferred page size on mount if omitted
   useEffect(() => {
@@ -279,19 +522,18 @@ export default function AdminRegistrationSubmissionsPanel({
         const parsed = stored === "all" ? "all" : parseInt(stored, 10);
         if (parsed === "all" || (Number.isInteger(parsed) && parsed > 0)) {
           const href = buildPageHref({
-            slug: form.slug,
-             page: 1,
+            ...currentModeRouteConfig,
+            page: 1,
             from,
             to,
             pageSize: parsed,
-            searchField,
             searchQuery,
           });
           router.replace(href, { scroll: false });
         }
       }
     }
-  }, [pageSize, router, form.slug, from, to, searchField, searchQuery]);
+  }, [currentModeRouteConfig, from, pageSize, router, searchQuery, to]);
 
   const totalPages =
     submissionPage.pageSize === "all"
@@ -299,7 +541,9 @@ export default function AdminRegistrationSubmissionsPanel({
       : Math.max(1, Math.ceil(submissionPage.total / (submissionPage.pageSize as number)));
   const exportParams = new URLSearchParams();
 
-  exportParams.set("form", form.slug);
+  if (form?.slug) {
+    exportParams.set("form", form.slug);
+  }
 
   if (from) {
     exportParams.set("from", from);
@@ -309,43 +553,127 @@ export default function AdminRegistrationSubmissionsPanel({
     exportParams.set("to", to);
   }
 
+  const formSelectorItems = [
+    ...forms.map((candidate) => ({
+      id: candidate.id,
+      title: candidate.title,
+      href: buildPageHref({
+        slug: candidate.slug,
+        page: 1,
+        from,
+        to,
+        pageSize,
+        searchField,
+        searchQuery,
+      }),
+      status: candidate.status,
+      kind: candidate.kind,
+    })),
+    {
+      id: FORM_FILTER_ITEM_ID,
+      title:
+        selectedCommonForms.length > 0
+          ? `Form filter (${selectedCommonForms.length})`
+          : "Form filter",
+      onSelect: () => {
+        setShowCommonFormFilter(true);
+        setPendingCommonFormSlugs((current) =>
+          current.length > 0 ? current : form?.slug ? [form.slug] : [],
+        );
+      },
+      status: "filter",
+      kind: "multi-form",
+    },
+  ];
+
+  const selectedSelectorId = showCommonFormFilter ? FORM_FILTER_ITEM_ID : form?.id;
+  const title = isCommonMode
+    ? "Common Registrations"
+    : `${form?.title ?? "Registration"} Submissions`;
+  const description = isCommonMode
+    ? "Showing registrants that are common to every selected form."
+    : "Filter by date range, inspect individual submissions, and export the current form’s data.";
+  const dateLabelTarget = isCommonMode
+    ? "common registrations"
+    : `${form?.title ?? "registration"} submissions`;
+
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 pb-10">
       <OptimisticSubmissionDrawer
-        form={form}
+        forms={contextForms}
+        mode={mode}
+        formSlug={form?.slug ?? null}
+        commonFormSlugs={normalizedCommonFormSlugs}
         submissions={submissionPage.submissions}
         selectedSubmission={selectedSubmission}
       />
       <FormSelectorDropdown
-        items={forms.map((f) => ({
-          id: f.id,
-          title: f.title,
-          href: buildPageHref({ slug: f.slug, from, to }),
-          status: f.status,
-          kind: f.kind,
-        }))}
-        selectedId={form.id}
+        items={formSelectorItems}
+        selectedId={selectedSelectorId}
+        afterSelector={
+          showCommonFormFilter ? (
+            <CommonFormFilterDropdown
+              forms={forms}
+              selectedSlugs={pendingCommonFormSlugs}
+              onToggleSlug={(slug) => {
+                setPendingCommonFormSlugs((current) =>
+                  current.includes(slug)
+                    ? current.filter((value) => value !== slug)
+                    : [...current, slug],
+                );
+              }}
+              onApply={() => {
+                const nextCommonFormSlugs = normalizeCommonFormSlugs(pendingCommonFormSlugs);
+                const href = buildPageHref({
+                  mode: "common",
+                  commonFormSlugs: nextCommonFormSlugs,
+                  page: 1,
+                  from,
+                  to,
+                  pageSize,
+                  searchField: null,
+                  searchQuery,
+                });
+                router.push(href, { scroll: false });
+              }}
+              disabled={pendingCommonFormSlugs.length === 0}
+            />
+          ) : null
+        }
       />
 
        <div className="rounded-xl border border-zinc-200 bg-white p-4 sm:p-6 md:p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-zinc-100 pb-6 dark:border-zinc-800/80">
           <div>
             <h3 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-              {form.title} Submissions
+              {title}
             </h3>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              Filter by date range, inspect individual submissions, and export the
-              current form’s data.
+              {description}
             </p>
+            {isCommonMode && selectedCommonForms.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {selectedCommonForms.map((selectedForm) => (
+                  <span
+                    key={selectedForm.id}
+                    className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[0.6875rem] font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300"
+                  >
+                    {selectedForm.title}
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </div>
 
-          <a
-            href={`/admin/registrations/export?${exportParams.toString()}`}
-            title="Download CSV"
-            className="inline-flex items-center justify-center rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus:ring-zinc-300 transition-colors"
-          >
-            Export CSV
-          </a>
+          {!isCommonMode && form ? (
+            <a
+              href={`/admin/registrations/export?${exportParams.toString()}`}
+              title="Download CSV"
+              className="inline-flex items-center justify-center rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus:ring-zinc-300 transition-colors"
+            >
+              Export CSV
+            </a>
+          ) : null}
         </div>
 
         <form 
@@ -364,48 +692,54 @@ export default function AdminRegistrationSubmissionsPanel({
             }
             
             const href = buildPageHref({
-              slug: form.slug,
+              slug: isCommonMode ? null : form?.slug,
+              mode: isCommonMode ? "common" : "single",
+              commonFormSlugs: isCommonMode ? normalizedCommonFormSlugs : null,
               page: 1,
               from: f || null,
               to: t || null,
               pageSize: ps === "all" ? "all" : (ps ? parseInt(ps, 10) : null),
-              searchField: sf || null,
+              searchField: isCommonMode ? null : sf || null,
               searchQuery: sq || null,
             });
-            router.push(href);
+            router.push(href, { scroll: false });
           }}
         >
-          <input type="hidden" name="form" value={form.slug} />
+          {isCommonMode ? <input type="hidden" name="searchField" value="" /> : null}
           
           <div className="flex flex-col md:flex-row md:items-end gap-4">
-            <div className="flex-1 space-y-1">
-              <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                Search field
-              </label>
-              <select
-                name="searchField"
-                defaultValue={searchField ?? ""}
-                className="block h-10 w-full rounded-md border border-zinc-300 bg-white pl-3 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
-                style={{ paddingRight: "2.5rem" }}
-              >
-                <option value="">All fields</option>
-                <option value="teamName">Team Name</option>
-                {form.fields.map((f) => (
-                  <option key={f.key} value={f.key}>
-                    {f.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {!isCommonMode && form ? (
+              <div className="flex-1 space-y-1">
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                  Search field
+                </label>
+                <select
+                  name="searchField"
+                  defaultValue={searchField ?? ""}
+                  className="block h-10 w-full rounded-md border border-zinc-300 bg-white pl-3 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
+                  style={{ paddingRight: "2.5rem" }}
+                >
+                  <option value="">All fields</option>
+                  <option value="teamName">Team Name</option>
+                  {form.fields.map((field) => (
+                    <option key={field.key} value={field.key}>
+                      {field.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
 
-            <div className="flex-[2] space-y-1">
+            <div className={`${isCommonMode ? "flex-1" : "flex-[2]"} space-y-1`}>
               <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
                 Search query
               </label>
               <input
                 type="search"
                 name="searchQuery"
-                placeholder="Search..."
+                placeholder={
+                  isCommonMode ? "Search across selected forms..." : "Search..."
+                }
                 defaultValue={searchQuery ?? ""}
                 className="block h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
               />
@@ -433,7 +767,7 @@ export default function AdminRegistrationSubmissionsPanel({
                 defaultValue={from}
                 placeholder="yyyy/mm/dd"
                 inputMode="numeric"
-                ariaLabel={`Select the start date for ${form.title} submissions`}
+                ariaLabel={`Select the start date for ${dateLabelTarget}`}
                 className="block h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
               />
             </div>
@@ -449,7 +783,7 @@ export default function AdminRegistrationSubmissionsPanel({
                 defaultValue={to}
                 placeholder="yyyy/mm/dd"
                 inputMode="numeric"
-                ariaLabel={`Select the end date for ${form.title} submissions`}
+                ariaLabel={`Select the end date for ${dateLabelTarget}`}
                className="block h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-zinc-900 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 sm:text-sm dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:border-zinc-400 dark:focus:ring-zinc-400"
               />
             </div>
@@ -493,22 +827,26 @@ export default function AdminRegistrationSubmissionsPanel({
                   return (
                     <SubmissionRow
                         key={submission.id}
-                        form={form}
                         submission={submission}
-                        from={from}
-                        to={to}
+                        href={buildCurrentModeHref({
+                          page: submissionPage.page,
+                          submissionId: submission.id,
+                        })}
                         isActive={selectedSubmission?.id === submission.id}
                         sequenceNumber={sequenceNumber}
+                        showCommonMatches={isCommonMode}
                     />
                   );
                 })
             ) : (
                 <div className="rounded-lg border border-dashed border-zinc-300 p-8 text-center dark:border-zinc-700">
                 <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                    No submissions found
+                    {isCommonMode ? "No common registrations found" : "No submissions found"}
                 </p>
                 <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                    Once users submit this form, they will appear here.
+                    {isCommonMode
+                      ? "Select different forms or wait for overlapping registrants to submit."
+                      : "Once users submit this form, they will appear here."}
                 </p>
                 </div>
             )}
@@ -521,14 +859,8 @@ export default function AdminRegistrationSubmissionsPanel({
 
                 <div className="flex items-center gap-2">
                   <Link
-                    href={buildPageHref({
-                      slug: form.slug,
+                    href={buildCurrentModeHref({
                       page: Math.max(1, submissionPage.page - 1),
-                      from,
-                      to,
-                      pageSize,
-                      searchField,
-                      searchQuery,
                     })}
                     className={`inline-flex items-center justify-center rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-300 ${
                       submissionPage.page <= 1 ? "pointer-events-none opacity-50" : ""
@@ -537,14 +869,8 @@ export default function AdminRegistrationSubmissionsPanel({
                     Prev
                   </Link>
                   <Link
-                    href={buildPageHref({
-                      slug: form.slug,
+                    href={buildCurrentModeHref({
                       page: Math.min(totalPages, submissionPage.page + 1),
-                      from,
-                      to,
-                      pageSize,
-                      searchField,
-                      searchQuery,
                     })}
                     className={`inline-flex items-center justify-center rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-300 ${
                       submissionPage.page >= totalPages
